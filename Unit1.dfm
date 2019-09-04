@@ -60,6 +60,8 @@ object MainForm: TMainForm
     EditLabel.Height = 13
     EditLabel.Caption = 'IP '#1072#1076#1088#1077#1089':'
     MaxLength = 15
+    ParentShowHint = False
+    ShowHint = True
     TabOrder = 0
     OnKeyPress = IPEditKeyPress
   end
@@ -74,6 +76,8 @@ object MainForm: TMainForm
     EditLabel.Caption = #1055#1086#1088#1090':'
     MaxLength = 5
     NumbersOnly = True
+    ParentShowHint = False
+    ShowHint = True
     TabOrder = 1
     Text = '27015'
   end
@@ -121,7 +125,7 @@ object MainForm: TMainForm
   object StartButton: TButton
     Left = 8
     Top = 285
-    Width = 281
+    Width = 217
     Height = 25
     Caption = #1053#1072#1095#1072#1090#1100' '#1084#1086#1085#1080#1090#1086#1088#1080#1085#1075
     TabOrder = 6
@@ -144,6 +148,15 @@ object MainForm: TMainForm
     Height = 17
     Caption = #1057#1088#1072#1079#1091' '#1085#1072#1095#1080#1085#1072#1090#1100' '#1084#1086#1085#1080#1090#1086#1088#1080#1085#1075
     TabOrder = 8
+  end
+  object LogButton: TButton
+    Left = 232
+    Top = 285
+    Width = 57
+    Height = 25
+    Caption = #1051#1086#1075
+    TabOrder = 9
+    OnClick = LogButtonClick
   end
   object OpenDialog: TOpenDialog
     FileName = 'srcds.exe'

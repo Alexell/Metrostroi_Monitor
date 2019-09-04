@@ -9,6 +9,7 @@
 //#include <fstream.h>
 
 #include "Unit1.h"
+#include "Unit2.h"
 //---------------------------------------------------------------------------
 #pragma package(smart_init)
 #pragma resource "*.dfm"
@@ -152,6 +153,7 @@ void __fastcall TMainForm::TimerTimer(TObject *Sender)
 	}
 	catch(...) //если порт недоступен
 	{
+		LogForm->Log->Lines->Add(Now().TimeString()+" | Порт "+PortEdit->Text+" недоступен.");
 		//Проверяем наличие процесса + kill
         pid = 0;
 		cmd = AnsiString(ExtractFileName(FileEdit->Text)).c_str();
@@ -159,12 +161,16 @@ void __fastcall TMainForm::TimerTimer(TObject *Sender)
 		if (pid != 0)
 		{
 			KillProcess(pid);
+			LogForm->Log->Lines->Add(Now().TimeString()+" | Активный процесс srcds.exe завершен. Сервер запускается...");
 		}
+		else
+			LogForm->Log->Lines->Add(Now().TimeString()+" | Процесс srcds.exe не найден. Сервер запускается...");
 
 		//Запускаем сервер
 		SetCurrentDir(ExtractFileDir(FileEdit->Text));
 		cmd = AnsiString(ExtractFileName(FileEdit->Text)+" "+CmdMemo->Text).c_str();
 		WinExec(cmd,SW_SHOW);
+        LogForm->Log->Lines->Add(Now().TimeString()+" | Сервер запущен.");
 	}
 	if(IdTCPClient->Connected()) //если порт доступен
 	{
@@ -217,6 +223,12 @@ void __fastcall TMainForm::IPEditKeyPress(TObject *Sender, System::WideChar &Key
     //Фильтр для поля IP адреса
 	if((Key >= '0') && (Key <= '9') || Key == '.' || Key == VK_BACK){}
 	else Key = 0;
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TMainForm::LogButtonClick(TObject *Sender)
+{
+    LogForm->Show();
 }
 //---------------------------------------------------------------------------
 

@@ -39,12 +39,14 @@ __published:	// IDE-managed Components
 	TTrayIcon *Tray;
 	TLabel *AboutLabel;
 	TLabel *ActionLabel;
+	TButton *LogButton;
 	void __fastcall FileButtonClick(TObject *Sender);
 	void __fastcall StartButtonClick(TObject *Sender);
 	void __fastcall TimerTimer(TObject *Sender);
 	void __fastcall FormShow(TObject *Sender);
 	void __fastcall CmdMemoClick(TObject *Sender);
 	void __fastcall IPEditKeyPress(TObject *Sender, System::WideChar &Key);
+	void __fastcall LogButtonClick(TObject *Sender);
 
 private:	// User declarations
 public:		// User declarations
