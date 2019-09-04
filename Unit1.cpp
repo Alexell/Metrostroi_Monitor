@@ -1,4 +1,4 @@
-//---------------------------------------------------------------------------
+﻿//---------------------------------------------------------------------------
 
 #include <vcl.h>
 #pragma hdrstop
@@ -90,7 +90,7 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 			return;
 		}
 
-		//Старт
+		//Сохранение настроек в INI
 		Settings = new TMemIniFile(ExtractFilePath(Application->ExeName)+"settings.ini",TEncoding::UTF8);
 		Settings->WriteString("Server","IP",IPEdit->Text);
 		Settings->WriteString("Server","Port",PortEdit->Text);
@@ -102,6 +102,7 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 		Settings->UpdateFile();
 		delete Settings;
 
+		//Блокировка элементов формы
 		IPEdit->Enabled = false;
 		PortEdit->Enabled = false;
 		FileEdit->Enabled = false;
@@ -113,13 +114,15 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 		Timer->Interval=StrToInt(IntEdit->Text)*1000;
 		IdTCPClient->Host=IPEdit->Text;
 		IdTCPClient->Port=StrToInt(PortEdit->Text);
+
+		//Запуск таймера
 		Timer->Enabled = true;
 		started = true;
 		StartButton->Caption = "Остановить мониторинг";
 	}
 	else
 	{
-		//Стоп
+		//Разблокировка элементов формы
 		IPEdit->Enabled = true;
 		PortEdit->Enabled = true;
 		FileEdit->Enabled = true;
@@ -129,6 +132,8 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 		AutostartCheck->Enabled = true;
 		HideCheck->Enabled = true;
 		StartButton->Enabled = true;
+
+		//Остановка таймера
 		Timer->Enabled = false;
 		started = false;
 		StartButton->Caption = "Начать мониторинг";
@@ -145,9 +150,9 @@ void __fastcall TMainForm::TimerTimer(TObject *Sender)
 	{
 		IdTCPClient->Connect();
 	}
-	catch(...) //Порт недоступен
+	catch(...) //если порт недоступен
 	{
-		//Проверяем наличие процесса и убиваем его
+		//Проверяем наличие процесса + kill
         pid = 0;
 		cmd = AnsiString(ExtractFileName(FileEdit->Text)).c_str();
 		pid = IsProcessRunning(cmd);
@@ -161,7 +166,7 @@ void __fastcall TMainForm::TimerTimer(TObject *Sender)
 		cmd = AnsiString(ExtractFileName(FileEdit->Text)+" "+CmdMemo->Text).c_str();
 		WinExec(cmd,SW_SHOW);
 	}
-	if(IdTCPClient->Connected()) //Порт доступен
+	if(IdTCPClient->Connected()) //если порт доступен
 	{
 		IdTCPClient->Disconnect();
 	}
@@ -209,7 +214,7 @@ void __fastcall TMainForm::CmdMemoClick(TObject *Sender)
 
 void __fastcall TMainForm::IPEditKeyPress(TObject *Sender, System::WideChar &Key)
 {
-    //Фильтр для IP адреса
+    //Фильтр для поля IP адреса
 	if((Key >= '0') && (Key <= '9') || Key == '.' || Key == VK_BACK){}
 	else Key = 0;
 }

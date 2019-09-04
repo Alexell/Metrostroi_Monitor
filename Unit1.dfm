@@ -55,6 +55,7 @@ object MainForm: TMainForm
     Top = 24
     Width = 97
     Height = 21
+    Hint = #1051#1086#1082#1072#1083#1100#1085#1099#1081' IP '#1074#1072#1096#1077#1075#1086' '#1089#1077#1088#1074#1077#1088#1072
     EditLabel.Width = 47
     EditLabel.Height = 13
     EditLabel.Caption = 'IP '#1072#1076#1088#1077#1089':'
@@ -67,6 +68,7 @@ object MainForm: TMainForm
     Top = 24
     Width = 38
     Height = 21
+    Hint = #1055#1086#1088#1090' '#1089#1077#1088#1074#1077#1088#1072
     EditLabel.Width = 29
     EditLabel.Height = 13
     EditLabel.Caption = #1055#1086#1088#1090':'
