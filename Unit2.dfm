@@ -4,7 +4,7 @@ object LogForm: TLogForm
   BorderStyle = bsDialog
   Caption = #1051#1086#1075' '#1088#1072#1073#1086#1090#1099
   ClientHeight = 115
-  ClientWidth = 297
+  ClientWidth = 399
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -18,11 +18,11 @@ object LogForm: TLogForm
   object Log: TMemo
     Left = 0
     Top = 0
-    Width = 297
+    Width = 399
     Height = 115
     Align = alClient
     ReadOnly = True
     TabOrder = 0
-    ExplicitHeight = 113
+    ExplicitWidth = 400
   end
 end

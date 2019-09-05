@@ -4,9 +4,7 @@
 #pragma hdrstop
 
 #include "IniFiles.hpp"
-//#include <stdlib.h>
 #include <Tlhelp32.h>
-//#include <fstream.h>
 
 #include "Unit1.h"
 #include "Unit2.h"
@@ -28,12 +26,15 @@ __fastcall TMainForm::TMainForm(TComponent* Owner)
 	{
 		Settings = new TMemIniFile(ExtractFilePath(Application->ExeName)+"settings.ini",TEncoding::UTF8);
 		IPEdit->Text = Settings->ReadString("Server","IP","");
-		PortEdit->Text = Settings->ReadString("Server","Port","");
+		PortEdit->Text = Settings->ReadString("Server","Port","27015");
 		FileEdit->Text = Settings->ReadString("Server","Exe","");
 		CmdMemo->Text = Settings->ReadString("Server","Cmd","");
+		RestartCheck->State = Settings->ReadBool("Options","RestartDaily",0);
+		HourEdit->Text = Settings->ReadString("Options","RestartHour","04");
+		MinEdit->Text = Settings->ReadString("Options","RestartMinute","00");
 		IntEdit->Text = Settings->ReadString("Options","Interval","");
 		AutostartCheck->State=Settings->ReadBool("Options","Autostart",0);
-		HideCheck->State=Settings->ReadBool("Options","Minimized",0);
+		HideCheck->State = Settings->ReadBool("Options","Minimized",0);
 		delete Settings;
 		Timer->Interval=StrToInt(IntEdit->Text)*1000;
 	}
@@ -78,17 +79,27 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 			Application->MessageBox(L"Не заполнены настройки!", Application->Title.w_str(), MB_OK | MB_ICONERROR);
 			return;
 		}
-		if (StrToInt(IntEdit->Text)<60)
+		if (StrToInt(IntEdit->Text)<30)
 		{
-			Application->MessageBox(L"Минимальный интервал мониторинга: 60 секунд.", Application->Title.w_str(), MB_OK | MB_ICONERROR);
-			IntEdit->Text = "60";
+			Application->MessageBox(L"Минимальный интервал мониторинга: 30 секунд.", Application->Title.w_str(), MB_OK | MB_ICONEXCLAMATION);
+			IntEdit->Text = "30";
 			return;
 		}
 		if(CmdMemo->Text.SubString(0,9) != "srcds.exe")
 		{
-			Application->MessageBox(L"Командная строка должна начинаться с \"srcds.exe\"!", Application->Title.w_str(), MB_OK | MB_ICONERROR);
+			Application->MessageBox(L"Командная строка должна начинаться с \"srcds.exe\"!", Application->Title.w_str(), MB_OK | MB_ICONEXCLAMATION);
             CmdMemo->Text = "srcds.exe " + CmdMemo->Text;
 			return;
+		}
+		if(RestartCheck->Checked)
+		{
+			if (StrToInt(HourEdit->Text) > 23 || StrToInt(MinEdit->Text) > 59)
+			{
+				Application->MessageBox(L"Неверное время перезапуска сервера.", Application->Title.w_str(), MB_OK | MB_ICONERROR);
+				HourEdit->Text = "00";
+				MinEdit->Text = "00";
+				return;
+			}
 		}
 
 		//Сохранение настроек в INI
@@ -97,6 +108,9 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 		Settings->WriteString("Server","Port",PortEdit->Text);
 		Settings->WriteString("Server","Exe",FileEdit->Text);
 		Settings->WriteString("Server","Cmd",CmdMemo->Text);
+		Settings->WriteBool("Options","RestartDaily",RestartCheck->State);
+		Settings->WriteString("Options","RestartHour",HourEdit->Text);
+		Settings->WriteString("Options","RestartMinute",MinEdit->Text);
 		Settings->WriteString("Options","Interval",IntEdit->Text);
 		Settings->WriteBool("Options","Autostart",AutostartCheck->State);
 		Settings->WriteBool("Options","Minimized",HideCheck->State);
@@ -110,6 +124,9 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 		FileButton->Enabled = false;
 		CmdMemo->Enabled = false;
 		IntEdit->Enabled = false;
+		RestartCheck->Enabled = false;
+		HourEdit->Enabled = false;
+		MinEdit->Enabled = false;
 		AutostartCheck->Enabled = false;
 		HideCheck->Enabled = false;
 		Timer->Interval=StrToInt(IntEdit->Text)*1000;
@@ -130,6 +147,12 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 		FileButton->Enabled = true;
 		CmdMemo->Enabled = true;
 		IntEdit->Enabled = true;
+		RestartCheck->Enabled = true;
+		if (RestartCheck->Checked)
+		{
+			HourEdit->Enabled = true;
+			MinEdit->Enabled = true;
+		}
 		AutostartCheck->Enabled = true;
 		HideCheck->Enabled = true;
 		StartButton->Enabled = true;
@@ -144,9 +167,35 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 
 void __fastcall TMainForm::TimerTimer(TObject *Sender)
 {
-	//Мониторинг доступности IP:Port
 	char *cmd;
 	Timer->Enabled = false;
+
+	//Ежедневная перезагрузка сервера
+	if(RestartCheck->Checked)
+	{
+		String hr = FormatDateTime("hh",Time());
+		String mn = FormatDateTime("nn",Time());
+		if (hr == HourEdit->Text && mn == MinEdit->Text)
+		{
+			//Проверяем наличие процесса + kill
+			pid = 0;
+			cmd = AnsiString(ExtractFileName(FileEdit->Text)).c_str();
+			pid = IsProcessRunning(cmd);
+			if (pid != 0)
+			{
+				KillProcess(pid);
+			}
+			LogForm->Log->Lines->Add(Now().TimeString()+" | Перезапуск сервера по расписанию...");
+
+			//Запускаем сервер
+			SetCurrentDir(ExtractFileDir(FileEdit->Text));
+			cmd = AnsiString(ExtractFileName(FileEdit->Text)+" "+CmdMemo->Text).c_str();
+			WinExec(cmd,SW_SHOW);
+			LogForm->Log->Lines->Add(Now().TimeString()+" | Сервер запущен.");
+		}
+	}
+
+	//Мониторинг доступности IP:Port
 	try
 	{
 		IdTCPClient->Connect();
@@ -229,6 +278,21 @@ void __fastcall TMainForm::IPEditKeyPress(TObject *Sender, System::WideChar &Key
 void __fastcall TMainForm::LogButtonClick(TObject *Sender)
 {
     LogForm->Show();
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TMainForm::RestartCheckClick(TObject *Sender)
+{
+	if(RestartCheck->Checked)
+	{
+		HourEdit->Enabled = true;
+		MinEdit->Enabled = true;
+	}
+	else
+	{
+		HourEdit->Enabled = false;
+		MinEdit->Enabled = false;
+	}
 }
 //---------------------------------------------------------------------------
 

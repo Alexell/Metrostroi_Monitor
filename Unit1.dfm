@@ -4,7 +4,7 @@ object MainForm: TMainForm
   BorderIcons = [biSystemMenu, biMinimize]
   BorderStyle = bsSingle
   Caption = 'MainForm'
-  ClientHeight = 339
+  ClientHeight = 370
   ClientWidth = 297
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -26,7 +26,7 @@ object MainForm: TMainForm
   end
   object AboutLabel: TLabel
     Left = 59
-    Top = 316
+    Top = 350
     Width = 64
     Height = 13
     Caption = 'AboutLabel'
@@ -39,10 +39,23 @@ object MainForm: TMainForm
   end
   object ActionLabel: TLabel
     Left = 8
-    Top = 220
+    Top = 255
     Width = 144
     Height = 13
     Caption = #1055#1088#1080' '#1079#1072#1087#1091#1089#1082#1077' '#1087#1088#1086#1075#1088#1072#1084#1084#1099':'
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'Tahoma'
+    Font.Style = [fsBold]
+    ParentFont = False
+  end
+  object SeparatorLabel: TLabel
+    Left = 266
+    Top = 223
+    Width = 3
+    Height = 13
+    Caption = ':'
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clWindowText
     Font.Height = -11
@@ -96,7 +109,7 @@ object MainForm: TMainForm
   end
   object HideCheck: TCheckBox
     Left = 8
-    Top = 262
+    Top = 295
     Width = 202
     Height = 17
     Caption = #1040#1074#1090#1086#1084#1072#1090#1080#1095#1077#1089#1082#1080' '#1089#1074#1077#1088#1085#1091#1090#1100' '#1087#1088#1086#1075#1088#1072#1084#1084#1091
@@ -124,7 +137,7 @@ object MainForm: TMainForm
   end
   object StartButton: TButton
     Left = 8
-    Top = 285
+    Top = 320
     Width = 217
     Height = 25
     Caption = #1053#1072#1095#1072#1090#1100' '#1084#1086#1085#1080#1090#1086#1088#1080#1085#1075
@@ -143,7 +156,7 @@ object MainForm: TMainForm
   end
   object AutostartCheck: TCheckBox
     Left = 8
-    Top = 239
+    Top = 275
     Width = 161
     Height = 17
     Caption = #1057#1088#1072#1079#1091' '#1085#1072#1095#1080#1085#1072#1090#1100' '#1084#1086#1085#1080#1090#1086#1088#1080#1085#1075
@@ -151,12 +164,52 @@ object MainForm: TMainForm
   end
   object LogButton: TButton
     Left = 232
-    Top = 285
+    Top = 320
     Width = 57
     Height = 25
     Caption = #1051#1086#1075
     TabOrder = 9
     OnClick = LogButtonClick
+  end
+  object RestartCheck: TCheckBox
+    Left = 8
+    Top = 222
+    Width = 233
+    Height = 17
+    Hint = #1054#1087#1090#1080#1084#1072#1083#1100#1085#1086' '#1076#1083#1103' '#1087#1077#1088#1077#1079#1072#1087#1091#1089#1082#1072' '#1085#1086#1095#1100#1102
+    Caption = #1055#1077#1088#1077#1079#1072#1087#1091#1089#1082#1072#1090#1100' '#1089#1077#1088#1074#1077#1088' '#1077#1078#1077#1076#1085#1077#1074#1085#1086' '#1074
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'Tahoma'
+    Font.Style = [fsBold]
+    ParentFont = False
+    ParentShowHint = False
+    ShowHint = True
+    TabOrder = 10
+    OnClick = RestartCheckClick
+  end
+  object HourEdit: TEdit
+    Left = 247
+    Top = 220
+    Width = 18
+    Height = 21
+    Enabled = False
+    MaxLength = 2
+    NumbersOnly = True
+    TabOrder = 11
+    Text = '00'
+  end
+  object MinEdit: TEdit
+    Left = 271
+    Top = 220
+    Width = 18
+    Height = 21
+    Enabled = False
+    MaxLength = 2
+    NumbersOnly = True
+    TabOrder = 12
+    Text = '00'
   end
   object OpenDialog: TOpenDialog
     FileName = 'srcds.exe'

@@ -40,6 +40,10 @@ __published:	// IDE-managed Components
 	TLabel *AboutLabel;
 	TLabel *ActionLabel;
 	TButton *LogButton;
+	TCheckBox *RestartCheck;
+	TEdit *HourEdit;
+	TEdit *MinEdit;
+	TLabel *SeparatorLabel;
 	void __fastcall FileButtonClick(TObject *Sender);
 	void __fastcall StartButtonClick(TObject *Sender);
 	void __fastcall TimerTimer(TObject *Sender);
@@ -47,6 +51,7 @@ __published:	// IDE-managed Components
 	void __fastcall CmdMemoClick(TObject *Sender);
 	void __fastcall IPEditKeyPress(TObject *Sender, System::WideChar &Key);
 	void __fastcall LogButtonClick(TObject *Sender);
+	void __fastcall RestartCheckClick(TObject *Sender);
 
 private:	// User declarations
 public:		// User declarations
