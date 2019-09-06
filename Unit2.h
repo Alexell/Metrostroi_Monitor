@@ -12,6 +12,8 @@ class TLogForm : public TForm
 {
 __published:	// IDE-managed Components
 	TMemo *Log;
+	void __fastcall FormHide(TObject *Sender);
+	void __fastcall FormClose(TObject *Sender, TCloseAction &Action);
 private:	// User declarations
 public:		// User declarations
 	__fastcall TLogForm(TComponent* Owner);

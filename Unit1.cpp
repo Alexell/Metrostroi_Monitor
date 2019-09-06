@@ -86,10 +86,10 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 			IntEdit->Text = "30";
 			return;
 		}
-		if(CmdMemo->Text.SubString(0,9) != "srcds.exe")
+		if(CmdMemo->Text.SubString(0,15) != "start srcds.exe")
 		{
-			Application->MessageBox(L"Командная строка должна начинаться с \"srcds.exe\"!", Application->Title.w_str(), MB_OK | MB_ICONEXCLAMATION);
-            CmdMemo->Text = "srcds.exe " + CmdMemo->Text;
+			Application->MessageBox(L"Командная строка должна начинаться со \"start srcds.exe\"!", Application->Title.w_str(), MB_OK | MB_ICONEXCLAMATION);
+            CmdMemo->Text = "start srcds.exe " + CmdMemo->Text;
 			return;
 		}
 		if(RestartCheck->Checked)
@@ -285,7 +285,10 @@ void __fastcall TMainForm::IPEditKeyPress(TObject *Sender, System::WideChar &Key
 
 void __fastcall TMainForm::LogButtonClick(TObject *Sender)
 {
-    LogForm->Show();
+	if(LogForm->Visible == false)
+		LogForm->Show();
+	else
+        LogForm->Hide();
 }
 //---------------------------------------------------------------------------
 

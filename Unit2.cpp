@@ -14,3 +14,16 @@ __fastcall TLogForm::TLogForm(TComponent* Owner)
 {
 }
 //---------------------------------------------------------------------------
+void __fastcall TLogForm::FormHide(TObject *Sender)
+{
+	Position = poMainFormCenter;
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TLogForm::FormClose(TObject *Sender, TCloseAction &Action)
+{
+    Hide();
+    Position = poMainFormCenter;
+}
+//---------------------------------------------------------------------------
+
