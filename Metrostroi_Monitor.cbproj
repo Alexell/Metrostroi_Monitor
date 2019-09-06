@@ -70,8 +70,8 @@
         <Icon_MainIcon>$(BDS)\bin\cbuilder_PROJECTICON.ico</Icon_MainIcon>
         <UWP_CppLogo44>$(BDS)\bin\Artwork\Windows\UWP\cppreg_UwpDefault_44.png</UWP_CppLogo44>
         <UWP_CppLogo150>$(BDS)\bin\Artwork\Windows\UWP\cppreg_UwpDefault_150.png</UWP_CppLogo150>
-        <IncludePath>..\Source_Mon\;..\Metrostroi_Monitor\;D:\Cloud@Mail.Ru\СИНХРОНИЗАЦИЯ ДАННЫХ\Alexell Production\Репозитории\Source_Mon\;$(IncludePath)</IncludePath>
-        <ILINK_LibraryPath>..\Source_Mon\;..\Metrostroi_Monitor\;D:\Cloud@Mail.Ru\СИНХРОНИЗАЦИЯ ДАННЫХ\Alexell Production\Репозитории\Source_Mon\;$(ILINK_LibraryPath)</ILINK_LibraryPath>
+        <IncludePath>..\Metrostroi_Monitor\;$(IncludePath)</IncludePath>
+        <ILINK_LibraryPath>..\Metrostroi_Monitor\;$(ILINK_LibraryPath)</ILINK_LibraryPath>
         <SanitizedProjectName>Metrostroi_Monitor</SanitizedProjectName>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win32)'!=''">

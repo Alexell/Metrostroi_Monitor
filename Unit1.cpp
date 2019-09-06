@@ -15,6 +15,7 @@ TMainForm *MainForm;
 TMemIniFile* Settings;
 int pid;
 bool started = false;
+String CurDate,LastRestart;
 //---------------------------------------------------------------------------
 __fastcall TMainForm::TMainForm(TComponent* Owner)
 	: TForm(Owner)
@@ -173,25 +174,32 @@ void __fastcall TMainForm::TimerTimer(TObject *Sender)
 	//Ежедневная перезагрузка сервера
 	if(RestartCheck->Checked)
 	{
-		String hr = FormatDateTime("hh",Time());
-		String mn = FormatDateTime("nn",Time());
-		if (hr == HourEdit->Text && mn == MinEdit->Text)
+		CurDate = FormatDateTime("dd.mm.yyyy",Time());
+		if (CurDate != LastRestart)
 		{
-			//Проверяем наличие процесса + kill
-			pid = 0;
-			cmd = AnsiString(ExtractFileName(FileEdit->Text)).c_str();
-			pid = IsProcessRunning(cmd);
-			if (pid != 0)
+			String hr = FormatDateTime("hh",Time());
+			String mn = FormatDateTime("nn",Time());
+			if (hr == HourEdit->Text && mn == MinEdit->Text)
 			{
-				KillProcess(pid);
-			}
-			LogForm->Log->Lines->Add(Now().TimeString()+" | Перезапуск сервера по расписанию...");
+				//Проверяем наличие процесса + kill
+				pid = 0;
+				cmd = AnsiString(ExtractFileName(FileEdit->Text)).c_str();
+				pid = IsProcessRunning(cmd);
+				if (pid != 0)
+				{
+					KillProcess(pid);
+				}
+				LogForm->Log->Lines->Add(Now().TimeString()+" | Перезапуск сервера по расписанию...");
 
-			//Запускаем сервер
-			SetCurrentDir(ExtractFileDir(FileEdit->Text));
-			cmd = AnsiString(ExtractFileName(FileEdit->Text)+" "+CmdMemo->Text).c_str();
-			WinExec(cmd,SW_SHOW);
-			LogForm->Log->Lines->Add(Now().TimeString()+" | Сервер запущен.");
+				//Запускаем сервер
+				SetCurrentDir(ExtractFileDir(FileEdit->Text));
+				cmd = AnsiString(ExtractFileName(FileEdit->Text)+" "+CmdMemo->Text).c_str();
+				WinExec(cmd,SW_SHOW);
+				LastRestart = FormatDateTime("dd.mm.yyyy",Time());
+				LogForm->Log->Lines->Add(Now().TimeString()+" | Сервер запущен.");
+				Timer->Enabled = true;
+				return;
+			}
 		}
 	}
 
@@ -295,4 +303,5 @@ void __fastcall TMainForm::RestartCheckClick(TObject *Sender)
 	}
 }
 //---------------------------------------------------------------------------
+
 
