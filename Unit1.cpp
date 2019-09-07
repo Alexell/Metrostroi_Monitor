@@ -7,7 +7,6 @@
 #include <Tlhelp32.h>
 
 #include "Unit1.h"
-#include "Unit2.h"
 //---------------------------------------------------------------------------
 #pragma package(smart_init)
 #pragma resource "*.dfm"
@@ -16,6 +15,7 @@ TMemIniFile* Settings;
 int pid;
 bool started = false;
 String CurDate,LastRestart;
+FILE *logFile;
 //---------------------------------------------------------------------------
 __fastcall TMainForm::TMainForm(TComponent* Owner)
 	: TForm(Owner)
@@ -178,7 +178,7 @@ void __fastcall TMainForm::TimerTimer(TObject *Sender)
 	//Ежедневная перезагрузка сервера
 	if(RestartCheck->Checked)
 	{
-		CurDate = FormatDateTime("dd.mm.yyyy",Time());
+		CurDate = FormatDateTime("dd.mm.yyyy",Now());
 		if (CurDate != LastRestart)
 		{
 			String hr = FormatDateTime("hh",Time());
@@ -187,14 +187,18 @@ void __fastcall TMainForm::TimerTimer(TObject *Sender)
 			{
 				//Убиваем процесс
 				system(AnsiString("taskkill /IM "+ExtractFileName(FileEdit->Text)+" /F").c_str());
-				LogForm->Log->Lines->Add(Now().TimeString()+" | Перезапуск сервера по расписанию...");
+				logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName)+"log.txt").c_str(), "a+");
+				fprintf(logFile, AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss",Now())+" | Перезапуск сервера по расписанию...\n").c_str());
+				fclose(logFile);
 
 				//Запускаем сервер
 				SetCurrentDir(ExtractFileDir(FileEdit->Text));
 				cmd = AnsiString(ExtractFileName(FileEdit->Text)+" "+CmdMemo->Text).c_str();
 				WinExec(cmd,SW_SHOW);
 				LastRestart = FormatDateTime("dd.mm.yyyy",Now());
-				LogForm->Log->Lines->Add(Now().TimeString()+" | Сервер запущен.");
+				logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName)+"log.txt").c_str(), "a+");
+				fprintf(logFile, AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss",Now())+" | Сервер запущен.\n").c_str());
+				fclose(logFile);
 				Timer->Enabled = true;
 				return;
 			}
@@ -208,17 +212,23 @@ void __fastcall TMainForm::TimerTimer(TObject *Sender)
 	}
 	catch(...) //если порт недоступен
 	{
-		LogForm->Log->Lines->Add(Now().TimeString()+" | Порт "+PortEdit->Text+" недоступен.");
+		logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName)+"log.txt").c_str(), "a+");
+		fprintf(logFile, AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss",Now())+" | Порт "+PortEdit->Text+" недоступен.\n").c_str());
+		fclose(logFile);
 
 		//Убиваем процесс
 		system(AnsiString("taskkill /IM "+ExtractFileName(FileEdit->Text)+" /F").c_str());
-		LogForm->Log->Lines->Add(Now().TimeString()+" | Сервер перезапускается...");
+		logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName)+"log.txt").c_str(), "a+");
+		fprintf(logFile, AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss",Now())+" | Сервер перезапускается...\n").c_str());
+		fclose(logFile);
 
 		//Запускаем сервер
 		SetCurrentDir(ExtractFileDir(FileEdit->Text));
 		cmd = AnsiString(ExtractFileName(FileEdit->Text)+" "+CmdMemo->Text).c_str();
 		WinExec(cmd,SW_SHOW);
-		LogForm->Log->Lines->Add(Now().TimeString()+" | Сервер запущен.");
+		logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName)+"log.txt").c_str(), "a+");
+		fprintf(logFile, AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss",Now())+" | Сервер запущен.\n").c_str());
+		fclose(logFile);
 	}
 	if(IdTCPClient->Connected()) //если порт доступен
 	{
@@ -243,15 +253,6 @@ void __fastcall TMainForm::IPEditKeyPress(TObject *Sender, System::WideChar &Key
     //Фильтр для поля IP адреса
 	if((Key >= '0') && (Key <= '9') || Key == '.' || Key == VK_BACK){}
 	else Key = 0;
-}
-//---------------------------------------------------------------------------
-
-void __fastcall TMainForm::LogButtonClick(TObject *Sender)
-{
-	if(LogForm->Visible == false)
-		LogForm->Show();
-	else
-        LogForm->Hide();
 }
 //---------------------------------------------------------------------------
 

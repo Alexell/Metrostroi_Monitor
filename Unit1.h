@@ -39,7 +39,6 @@ __published:	// IDE-managed Components
 	TTrayIcon *Tray;
 	TLabel *AboutLabel;
 	TLabel *ActionLabel;
-	TButton *LogButton;
 	TCheckBox *RestartCheck;
 	TEdit *HourEdit;
 	TEdit *MinEdit;
@@ -50,7 +49,6 @@ __published:	// IDE-managed Components
 	void __fastcall FormShow(TObject *Sender);
 	void __fastcall CmdMemoClick(TObject *Sender);
 	void __fastcall IPEditKeyPress(TObject *Sender, System::WideChar &Key);
-	void __fastcall LogButtonClick(TObject *Sender);
 	void __fastcall RestartCheckClick(TObject *Sender);
 
 private:	// User declarations

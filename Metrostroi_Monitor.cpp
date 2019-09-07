@@ -5,7 +5,6 @@
 #include <tchar.h>
 //---------------------------------------------------------------------------
 USEFORM("Unit1.cpp", MainForm);
-USEFORM("Unit2.cpp", LogForm);
 //---------------------------------------------------------------------------
 int WINAPI _tWinMain(HINSTANCE, HINSTANCE, LPTSTR, int)
 {
@@ -15,7 +14,6 @@ int WINAPI _tWinMain(HINSTANCE, HINSTANCE, LPTSTR, int)
 		Application->MainFormOnTaskBar = true;
 		Application->Title = "Metrostroi Monitor";
 		Application->CreateForm(__classid(TMainForm), &MainForm);
-		Application->CreateForm(__classid(TLogForm), &LogForm);
 		Application->Run();
 	}
 	catch (Exception &exception)

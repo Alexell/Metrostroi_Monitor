@@ -138,7 +138,7 @@ object MainForm: TMainForm
   object StartButton: TButton
     Left = 8
     Top = 320
-    Width = 217
+    Width = 281
     Height = 25
     Caption = #1053#1072#1095#1072#1090#1100' '#1084#1086#1085#1080#1090#1086#1088#1080#1085#1075
     TabOrder = 6
@@ -162,15 +162,6 @@ object MainForm: TMainForm
     Caption = #1057#1088#1072#1079#1091' '#1085#1072#1095#1080#1085#1072#1090#1100' '#1084#1086#1085#1080#1090#1086#1088#1080#1085#1075
     TabOrder = 8
   end
-  object LogButton: TButton
-    Left = 232
-    Top = 320
-    Width = 57
-    Height = 25
-    Caption = #1051#1086#1075
-    TabOrder = 9
-    OnClick = LogButtonClick
-  end
   object RestartCheck: TCheckBox
     Left = 8
     Top = 222
@@ -186,7 +177,7 @@ object MainForm: TMainForm
     ParentFont = False
     ParentShowHint = False
     ShowHint = True
-    TabOrder = 10
+    TabOrder = 9
     OnClick = RestartCheckClick
   end
   object HourEdit: TEdit
@@ -197,7 +188,7 @@ object MainForm: TMainForm
     Enabled = False
     MaxLength = 2
     NumbersOnly = True
-    TabOrder = 11
+    TabOrder = 10
     Text = '00'
   end
   object MinEdit: TEdit
@@ -208,7 +199,7 @@ object MainForm: TMainForm
     Enabled = False
     MaxLength = 2
     NumbersOnly = True
-    TabOrder = 12
+    TabOrder = 11
     Text = '00'
   end
   object OpenDialog: TOpenDialog
