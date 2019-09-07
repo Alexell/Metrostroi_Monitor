@@ -86,6 +86,10 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 			IntEdit->Text = "30";
 			return;
 		}
+		if(CmdMemo->Text.SubString(0,21) == "start /wait srcds.exe")
+		{
+			CmdMemo->Text = StringReplace(CmdMemo->Text," /wait","",TReplaceFlags() << rfReplaceAll);
+		}
 		if(CmdMemo->Text.SubString(0,15) != "start srcds.exe")
 		{
 			Application->MessageBox(L"Командная строка должна начинаться со \"start srcds.exe\"!", Application->Title.w_str(), MB_OK | MB_ICONEXCLAMATION);
@@ -181,21 +185,15 @@ void __fastcall TMainForm::TimerTimer(TObject *Sender)
 			String mn = FormatDateTime("nn",Time());
 			if (hr == HourEdit->Text && mn == MinEdit->Text)
 			{
-				//Проверяем наличие процесса + kill
-				pid = 0;
-				cmd = AnsiString(ExtractFileName(FileEdit->Text)).c_str();
-				pid = IsProcessRunning(cmd);
-				if (pid != 0)
-				{
-					KillProcess(pid);
-				}
+				//Убиваем процесс
+				system(AnsiString("taskkill /IM "+ExtractFileName(FileEdit->Text)+" /F").c_str());
 				LogForm->Log->Lines->Add(Now().TimeString()+" | Перезапуск сервера по расписанию...");
 
 				//Запускаем сервер
 				SetCurrentDir(ExtractFileDir(FileEdit->Text));
 				cmd = AnsiString(ExtractFileName(FileEdit->Text)+" "+CmdMemo->Text).c_str();
 				WinExec(cmd,SW_SHOW);
-				LastRestart = FormatDateTime("dd.mm.yyyy",Time());
+				LastRestart = FormatDateTime("dd.mm.yyyy",Now());
 				LogForm->Log->Lines->Add(Now().TimeString()+" | Сервер запущен.");
 				Timer->Enabled = true;
 				return;
@@ -211,57 +209,22 @@ void __fastcall TMainForm::TimerTimer(TObject *Sender)
 	catch(...) //если порт недоступен
 	{
 		LogForm->Log->Lines->Add(Now().TimeString()+" | Порт "+PortEdit->Text+" недоступен.");
-		//Проверяем наличие процесса + kill
-        pid = 0;
-		cmd = AnsiString(ExtractFileName(FileEdit->Text)).c_str();
-		pid = IsProcessRunning(cmd);
-		if (pid != 0)
-		{
-			KillProcess(pid);
-			LogForm->Log->Lines->Add(Now().TimeString()+" | Активный процесс srcds.exe завершен. Сервер запускается...");
-		}
-		else
-			LogForm->Log->Lines->Add(Now().TimeString()+" | Процесс srcds.exe не найден. Сервер запускается...");
+
+		//Убиваем процесс
+		system(AnsiString("taskkill /IM "+ExtractFileName(FileEdit->Text)+" /F").c_str());
+		LogForm->Log->Lines->Add(Now().TimeString()+" | Сервер перезапускается...");
 
 		//Запускаем сервер
 		SetCurrentDir(ExtractFileDir(FileEdit->Text));
 		cmd = AnsiString(ExtractFileName(FileEdit->Text)+" "+CmdMemo->Text).c_str();
 		WinExec(cmd,SW_SHOW);
-        LogForm->Log->Lines->Add(Now().TimeString()+" | Сервер запущен.");
+		LogForm->Log->Lines->Add(Now().TimeString()+" | Сервер запущен.");
 	}
 	if(IdTCPClient->Connected()) //если порт доступен
 	{
 		IdTCPClient->Disconnect();
 	}
 	Timer->Enabled = true;
-}
-//---------------------------------------------------------------------------
-
-int TMainForm::IsProcessRunning( char * pName )
-{
-	int id_p;
-	strlwr( pName );
-	HANDLE snapshot = CreateToolhelp32Snapshot( TH32CS_SNAPPROCESS, 0 );
-	PROCESSENTRY32 pe;
-	char pExeName[256];
-	for( BOOL r=Process32First(snapshot, &pe); r; r=Process32Next(snapshot, &pe) )
-	{
-		if( strcmp( pe.szExeFile, pName ) == 0 )
-		{
-			id_p=pe.th32ProcessID;
-			CloseHandle(snapshot);
-			return id_p;
-		}
-	}
-	CloseHandle(snapshot);
-	return 0;
-}
-//---------------------------------------------------------------------------
-
-void TMainForm::KillProcess(int id)
-{
-   HANDLE ps = OpenProcess(1, false, id);
-   if (ps) TerminateProcess(ps, -9);
 }
 //---------------------------------------------------------------------------
 

@@ -55,8 +55,6 @@ __published:	// IDE-managed Components
 
 private:	// User declarations
 public:		// User declarations
-	int IsProcessRunning(char *pName);
-	void KillProcess(int id);
 	__fastcall TMainForm(TComponent* Owner);
 };
 //---------------------------------------------------------------------------
