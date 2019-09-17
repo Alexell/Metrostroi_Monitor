@@ -93,7 +93,6 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 		if(CmdMemo->Text.SubString(0,15) != "start srcds.exe")
 		{
 			Application->MessageBox(L"Командная строка должна начинаться со \"start srcds.exe\"!", Application->Title.w_str(), MB_OK | MB_ICONEXCLAMATION);
-            CmdMemo->Text = "start srcds.exe " + CmdMemo->Text;
 			return;
 		}
 		if(RestartCheck->Checked)
@@ -142,6 +141,9 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 		Timer->Enabled = true;
 		started = true;
 		StartButton->Caption = "Остановить мониторинг";
+		logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName)+"log.txt").c_str(), "a+");
+		fprintf(logFile, AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss",Now())+" | Мониторинг запущен.\n").c_str());
+		fclose(logFile);
 	}
 	else
 	{
@@ -166,6 +168,9 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 		Timer->Enabled = false;
 		started = false;
 		StartButton->Caption = "Начать мониторинг";
+		logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName)+"log.txt").c_str(), "a+");
+		fprintf(logFile, AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss",Now())+" | Мониторинг остановлен.\n").c_str());
+		fclose(logFile);
 	}
 }
 //---------------------------------------------------------------------------
@@ -271,4 +276,15 @@ void __fastcall TMainForm::RestartCheckClick(TObject *Sender)
 }
 //---------------------------------------------------------------------------
 
+
+void __fastcall TMainForm::FormClose(TObject *Sender, TCloseAction &Action)
+{
+	if (started == true)
+	{
+		logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName)+"log.txt").c_str(), "a+");
+		fprintf(logFile, AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss",Now())+" | Мониторинг прерван.\n").c_str());
+		fclose(logFile);
+	}
+}
+//---------------------------------------------------------------------------
 

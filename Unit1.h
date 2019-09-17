@@ -50,6 +50,7 @@ __published:	// IDE-managed Components
 	void __fastcall CmdMemoClick(TObject *Sender);
 	void __fastcall IPEditKeyPress(TObject *Sender, System::WideChar &Key);
 	void __fastcall RestartCheckClick(TObject *Sender);
+	void __fastcall FormClose(TObject *Sender, TCloseAction &Action);
 
 private:	// User declarations
 public:		// User declarations
