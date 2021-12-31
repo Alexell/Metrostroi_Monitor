@@ -4,7 +4,7 @@
 
 **Website:** https://alexell.ru/
  
-![Metrostroi Monitor](http://metrostroi.alexell.ru/images/monitor.jpg)
+![Metrostroi Monitor](https://alexell.ru/wp-content/uploads/2019/09/monitor1.jpg)
 
 **Описание:**
 
