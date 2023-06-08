@@ -34,5 +34,6 @@
 #Other C++ Builder Files
 [Ww]in32*/**
 __history/
+__astcache/
 *.local
 *.stat
