@@ -1,4 +1,4 @@
-//---------------------------------------------------------------------------
+﻿//---------------------------------------------------------------------------
 
 #include <vcl.h>
 #pragma hdrstop
@@ -11,6 +11,7 @@
 TMainForm *MainForm;
 TMemIniFile* Settings;
 int pid;
+int DownCount = 0;
 bool started = false;
 String CurDate,LastRestart;
 FILE *logFile;
@@ -184,28 +185,32 @@ void __fastcall TMainForm::TimerTimer(TObject *Sender)
 	//Мониторинг доступности IP:Port
 	try {
 		IdTCPClient->Connect();
-	}
-	catch(...) { //если порт недоступен
-		logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
-		fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Порт " + PortEdit->Text + " недоступен.\n").c_str());
-		fclose(logFile);
+		if (IdTCPClient->Connected()) { //если порт доступен
+			IdTCPClient->Disconnect();
+			DownCount = 0;
+		}
+	} catch(...) { //если порт недоступен
+		DownCount++;
+		if (DownCount == 3) {
+			logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
+			fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Порт " + PortEdit->Text + " недоступен.\n").c_str());
+			fclose(logFile);
 
-		//Убиваем процесс
-		system(AnsiString("taskkill /IM " + ExtractFileName(FileEdit->Text) + " /F").c_str());
-		logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
-		fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер перезапускается...\n").c_str());
-		fclose(logFile);
+			//Убиваем процесс
+			system(AnsiString("taskkill /IM " + ExtractFileName(FileEdit->Text) + " /F").c_str());
+			logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
+			fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер перезапускается...\n").c_str());
+			fclose(logFile);
 
-		//Запускаем сервер
-		SetCurrentDir(ExtractFileDir(FileEdit->Text));
-		cmd = AnsiString(ExtractFileName(FileEdit->Text) + " " + CmdMemo->Text).c_str();
-		WinExec(cmd, SW_SHOW);
-		logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
-		fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер запущен.\n").c_str());
-		fclose(logFile);
-	}
-	if (IdTCPClient->Connected()) { //если порт доступен
-		IdTCPClient->Disconnect();
+			//Запускаем сервер
+			SetCurrentDir(ExtractFileDir(FileEdit->Text));
+			cmd = AnsiString(ExtractFileName(FileEdit->Text) + " " + CmdMemo->Text).c_str();
+			WinExec(cmd, SW_SHOW);
+			logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
+			fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер запущен.\n").c_str());
+			fclose(logFile);
+            DownCount = 0;
+		}
 	}
 	Timer->Enabled = true;
 }
