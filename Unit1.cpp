@@ -4,6 +4,7 @@
 #pragma hdrstop
 
 #include "IniFiles.hpp"
+#include "SSQ.h"
 #include "Unit1.h"
 //---------------------------------------------------------------------------
 #pragma package(smart_init)
@@ -15,6 +16,15 @@ int DownCount = 0;
 bool started = false;
 String CurDate,LastRestart;
 FILE *logFile;
+HINSTANCE dllhandle;
+typedef BOOL (WINAPI *SSQ_InitializeFuncType)(BOOL exit);
+typedef BOOL (WINAPI *SSQ_SetTimeoutFuncType)(DWORD type, int timeout);
+typedef BOOL (WINAPI *SSQ_SetGameServerFuncType)(char* address);
+typedef BOOL (WINAPI *SSQ_GetInfoReplyFuncType)(PSSQ_INFO_REPLY info_reply);
+SSQ_InitializeFuncType SSQ_InitializeFunc = nullptr;
+SSQ_SetTimeoutFuncType SSQ_SetTimeoutFunc = nullptr;
+SSQ_SetGameServerFuncType SSQ_SetGameServerFunc = nullptr;
+SSQ_GetInfoReplyFuncType SSQ_GetInfoReplyFunc = nullptr;
 //---------------------------------------------------------------------------
 __fastcall TMainForm::TMainForm(TComponent* Owner)
 	: TForm(Owner)
@@ -38,6 +48,17 @@ __fastcall TMainForm::TMainForm(TComponent* Owner)
 		delete Settings;
 		Timer->Interval = StrToInt(IntEdit->Text) * 1000;
 	}
+	// Загружаем SourceQuery DLL
+	dllhandle = LoadLibraryA("SSQ.dll");
+	if (!dllhandle) {
+		Application->MessageBox(L"SSQ.dll не найден!", Application->Title.w_str(), MB_OK | MB_ICONERROR);
+		Application->Terminate();
+	}
+
+	SSQ_InitializeFunc = (SSQ_InitializeFuncType)GetProcAddress(dllhandle, "SSQ_Initialize");
+	SSQ_SetTimeoutFunc = (SSQ_SetTimeoutFuncType)GetProcAddress(dllhandle, "SSQ_SetTimeout");
+	SSQ_SetGameServerFunc = (SSQ_SetGameServerFuncType)GetProcAddress(dllhandle, "SSQ_SetGameServer");
+	SSQ_GetInfoReplyFunc = (SSQ_GetInfoReplyFuncType)GetProcAddress(dllhandle, "SSQ_GetInfoReply");
 }
 //---------------------------------------------------------------------------
 
@@ -181,15 +202,25 @@ void __fastcall TMainForm::TimerTimer(TObject *Sender)
 			}
 		}
 	}
-
-	//Мониторинг доступности IP:Port
-	try {
-		IdTCPClient->Connect();
-		if (IdTCPClient->Connected()) { //если порт доступен
-			IdTCPClient->Disconnect();
-			DownCount = 0;
+	// Мониторинг через SourceQuery
+	SSQ_InitializeFunc(false);
+	SSQ_SetTimeoutFunc(SSQ_GS_TIMEOUT, 1000);
+	UnicodeString fullAddr = IPEdit->Text + ":" + PortEdit->Text;
+	int bufLen = WideCharToMultiByte(CP_ACP, 0, fullAddr.c_str(), -1, NULL, 0, NULL, NULL);
+	char *serverAddress = new char[bufLen];
+	WideCharToMultiByte(CP_ACP, 0, fullAddr.c_str(), -1, serverAddress, bufLen, NULL, NULL);
+	bool connectionSuccess = SSQ_SetGameServerFunc(serverAddress);
+	PSSQ_INFO_REPLY reply = new SSQ_INFO_REPLY;
+	if (connectionSuccess) { // подключение к серверу работает
+		if (SSQ_GetInfoReplyFunc(reply)) { // получение информации не работает
+			// вывод для отладки
+			String logData;
+			logData += "Hostname: " + String(reply->hostname) + "\n";
+			logData += "Map: " + String(reply->map) + "\n";
+			Application->MessageBox(logData.w_str(), Application->Title.w_str(), MB_OK | MB_ICONINFORMATION);
+			// -----------------------
 		}
-	} catch(...) { //если порт недоступен
+	} else {
 		DownCount++;
 		if (DownCount == 3) {
 			logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
@@ -209,9 +240,16 @@ void __fastcall TMainForm::TimerTimer(TObject *Sender)
 			logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
 			fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер запущен.\n").c_str());
 			fclose(logFile);
-            DownCount = 0;
+			DownCount = 0;
 		}
 	}
+
+	// освобождаем память
+	delete[] serverAddress;
+	delete reply;
+	SSQ_InitializeFunc(true);
+
+	DownCount = 0;
 	Timer->Enabled = true;
 }
 //---------------------------------------------------------------------------
