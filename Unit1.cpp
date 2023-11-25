@@ -140,6 +140,7 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 		MinEdit->Enabled = false;
 		AutostartCheck->Enabled = false;
 		HideCheck->Enabled = false;
+		AddButton->Enabled = false;
 		Timer->Interval = StrToInt(IntEdit->Text) * 1000;
 
 		// запуск таймера
@@ -160,7 +161,7 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 		}
 		AutostartCheck->Enabled = true;
 		HideCheck->Enabled = true;
-		StartButton->Enabled = true;
+		AddButton->Enabled = true;
 
 		// остановка таймера
 		Timer->Enabled = false;
