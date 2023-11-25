@@ -5,6 +5,7 @@
 
 #include "Unit1.h"
 #include "Unit2.h"
+#include "Unit3.h"
 #include "IniFiles.hpp"
 #include <System.JSON.hpp>
 //---------------------------------------------------------------------------
@@ -271,6 +272,12 @@ void __fastcall TMainForm::FormClose(TObject *Sender, TCloseAction &Action)
 void __fastcall TMainForm::AddButtonClick(TObject *Sender)
 {
     ServerAddForm->ShowModal();
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TMainForm::AlexellLogoClick(TObject *Sender)
+{
+	AboutForm->ShowModal();
 }
 //---------------------------------------------------------------------------
 

@@ -6,6 +6,7 @@
 //---------------------------------------------------------------------------
 USEFORM("Unit2.cpp", ServerAddForm);
 USEFORM("Unit1.cpp", MainForm);
+USEFORM("Unit3.cpp", AboutForm);
 //---------------------------------------------------------------------------
 int WINAPI _tWinMain(HINSTANCE, HINSTANCE, LPTSTR, int)
 {
@@ -16,6 +17,7 @@ int WINAPI _tWinMain(HINSTANCE, HINSTANCE, LPTSTR, int)
 		Application->Title = "Metrostroi Monitor";
 		Application->CreateForm(__classid(TMainForm), &MainForm);
 		Application->CreateForm(__classid(TServerAddForm), &ServerAddForm);
+		Application->CreateForm(__classid(TAboutForm), &AboutForm);
 		Application->Run();
 	}
 	catch (Exception &exception)
