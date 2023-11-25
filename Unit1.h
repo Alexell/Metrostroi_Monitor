@@ -16,17 +16,13 @@
 #include <IdTCPClient.hpp>
 #include <IdTCPConnection.hpp>
 #include <Vcl.Dialogs.hpp>
+#include <Vcl.ComCtrls.hpp>
+#include <Vcl.WinXCtrls.hpp>
 //---------------------------------------------------------------------------
 class TMainForm : public TForm
 {
 __published:	// IDE-managed Components
-	TLabeledEdit *IPEdit;
-	TLabeledEdit *PortEdit;
 	TLabeledEdit *IntEdit;
-	TLabeledEdit *FileEdit;
-	TButton *FileButton;
-	TLabel *CmdLabel;
-	TMemo *CmdMemo;
 	TCheckBox *RestartCheck;
 	TEdit *HourEdit;
 	TEdit *MinEdit;
@@ -35,22 +31,23 @@ __published:	// IDE-managed Components
 	TCheckBox *AutostartCheck;
 	TCheckBox *HideCheck;
 	TButton *StartButton;
-	TLabel *AboutLabel;
-	TOpenDialog *OpenDialog;
-	TIdTCPClient *IdTCPClient;
 	TTimer *Timer;
 	TIdAntiFreeze *IdAntiFreeze;
 	TTrayIcon *Tray;
+	TListView *Servers;
+	TButton *AddButton;
+	TLabeledEdit *DownEdit;
+	TActivityIndicator *UpdateInticator;
 	void __fastcall FormShow(TObject *Sender);
-	void __fastcall FileButtonClick(TObject *Sender);
 	void __fastcall StartButtonClick(TObject *Sender);
 	void __fastcall TimerTimer(TObject *Sender);
-	void __fastcall CmdMemoClick(TObject *Sender);
-	void __fastcall IPEditKeyPress(TObject *Sender, System::WideChar &Key);
 	void __fastcall RestartCheckClick(TObject *Sender);
 	void __fastcall FormClose(TObject *Sender, TCloseAction &Action);
+	void __fastcall AddButtonClick(TObject *Sender);
+	void __fastcall FormCreate(TObject *Sender);
 private:	// User declarations
 public:		// User declarations
+    void __fastcall LoadServers();
 	__fastcall TMainForm(TComponent* Owner);
 };
 //---------------------------------------------------------------------------
