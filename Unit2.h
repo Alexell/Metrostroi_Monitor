@@ -30,9 +30,12 @@ __published:	// IDE-managed Components
 	void __fastcall SaveButtonClick(TObject *Sender);
 	void __fastcall CancelButtonClick(TObject *Sender);
 	void __fastcall FormClose(TObject *Sender, TCloseAction &Action);
+	void __fastcall FormShow(TObject *Sender);
 private:	// User declarations
 public:		// User declarations
 	__fastcall TServerAddForm(TComponent* Owner);
+	bool EditServer;
+	int EditServerID;
 };
 //---------------------------------------------------------------------------
 extern PACKAGE TServerAddForm *ServerAddForm;

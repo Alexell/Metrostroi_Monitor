@@ -45,6 +45,7 @@ __published:	// IDE-managed Components
 	TMenuItem *PMenuRestart;
 	TMenuItem *PMenuRemove;
 	TMenuItem *PMenuShutdown;
+	TMenuItem *PMenuEdit;
 	void __fastcall FormShow(TObject *Sender);
 	void __fastcall StartButtonClick(TObject *Sender);
 	void __fastcall TimerTimer(TObject *Sender);
@@ -58,6 +59,7 @@ __published:	// IDE-managed Components
 	void __fastcall PMenuRemoveClick(TObject *Sender);
 	void __fastcall PMenuRestartClick(TObject *Sender);
 	void __fastcall PMenuShutdownClick(TObject *Sender);
+	void __fastcall PMenuEditClick(TObject *Sender);
 
 private:	// User declarations
 	String __fastcall ExecuteSSQR(const String &command);

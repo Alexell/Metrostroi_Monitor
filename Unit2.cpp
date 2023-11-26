@@ -19,6 +19,37 @@ __fastcall TServerAddForm::TServerAddForm(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
+void __fastcall TServerAddForm::FormShow(TObject *Sender)
+{
+	if (EditServer && EditServerID >= 0) {
+		ServerAddForm->Caption = "Изменить сервер";
+
+		String serversFile = "servers.json";
+		TStringList *fileContent = new TStringList;
+		try {
+			fileContent->LoadFromFile(serversFile);
+			String jsonData = fileContent->Text;
+			TJSONArray *jsonArray = static_cast<TJSONArray*>(TJSONObject::ParseJSONValue(jsonData));
+			if (jsonArray != nullptr) {
+				TJSONObject *server = static_cast<TJSONObject*>(jsonArray->Get(EditServerID));
+				IPEdit->Text = server->GetValue("ip")->Value();
+				PortEdit->Text = server->GetValue("port")->Value();
+				PassEdit->Text = server->GetValue("password")->Value();
+				FileEdit->Text = server->GetValue("exe")->Value();
+				ArgsMemo->Text = server->GetValue("args")->Value();
+                ArgsMemo->Font->Color = clBlack;
+				fileContent->Text = jsonArray->ToString();
+				fileContent->SaveToFile(serversFile);
+			}
+			delete jsonArray;
+		}
+		__finally {
+			delete fileContent;
+		}
+	} else ServerAddForm->Caption = "Добавить сервер";
+}
+//---------------------------------------------------------------------------
+
 void __fastcall TServerAddForm::FileButtonClick(TObject *Sender)
 {
 	if (OpenDialog->Execute()) FileEdit->Text = OpenDialog->FileName;
@@ -54,55 +85,56 @@ void __fastcall TServerAddForm::SaveButtonClick(TObject *Sender)
 	ArgsMemo->Text = StringReplace(ArgsMemo->Text, " /wait", "", TReplaceFlags() << rfReplaceAll);
 
 	String serversFile = "servers.json";
-	if (FileExists(serversFile)) { // добавляем новый сервер в json
+	if (FileExists(serversFile)) { // добавляем / изменяем сервер в json
 		TStringList *fileContent = new TStringList;
 		try {
 			fileContent->LoadFromFile(serversFile);
 			String jsonData = fileContent->Text;
 
 			TJSONArray *jsonArray = static_cast<TJSONArray*>(TJSONObject::ParseJSONValue(jsonData));
-			if (jsonArray == nullptr) {
-				jsonArray = new TJSONArray();
+			if (jsonArray != nullptr) {
+				TJSONObject *serverData = new TJSONObject();
+				serverData->AddPair("ip", IPEdit->Text);
+				serverData->AddPair("port", PortEdit->Text);
+				serverData->AddPair("password", PassEdit->Text);
+				serverData->AddPair("exe", FileEdit->Text);
+				serverData->AddPair("args", ArgsMemo->Text);
+
+				if (EditServer && EditServerID >= 0 && EditServerID < jsonArray->Count)
+					jsonArray->Remove(EditServerID); // удаляем существующий элемент
+
+				jsonArray->Add(serverData);
+
+				fileContent->Text = jsonArray->ToString();
+				fileContent->SaveToFile(serversFile);
+
+				delete jsonArray;
 			}
-
-			TJSONObject *newServer = new TJSONObject();
-			newServer->AddPair("ip", IPEdit->Text);
-			newServer->AddPair("port", PortEdit->Text);
-			newServer->AddPair("password", PassEdit->Text);
-			newServer->AddPair("exe", FileEdit->Text);
-			newServer->AddPair("args", ArgsMemo->Text);
-
-			jsonArray->Add(newServer);
-
-			fileContent->Text = jsonArray->ToString();
-			fileContent->SaveToFile(serversFile);
-
-			delete jsonArray;
 		}
 		__finally {
 			delete fileContent;
 		}
 	} else { // создаем и сохраняем json с первым сервером
 		TJSONArray *jsonArray = new TJSONArray();
-		TJSONObject *newServer = new TJSONObject();
-		newServer->AddPair("ip", IPEdit->Text);
-		newServer->AddPair("port", PortEdit->Text);
-		newServer->AddPair("password", PassEdit->Text);
-		newServer->AddPair("exe", FileEdit->Text);
-		newServer->AddPair("args", ArgsMemo->Text);
+		TJSONObject *serverData = new TJSONObject();
 
-		jsonArray->Add(newServer);
+		serverData->AddPair("ip", IPEdit->Text);
+		serverData->AddPair("port", PortEdit->Text);
+		serverData->AddPair("password", PassEdit->Text);
+		serverData->AddPair("exe", FileEdit->Text);
+		serverData->AddPair("args", ArgsMemo->Text);
+
+		jsonArray->Add(serverData);
 
 		TStringList *fileContent = new TStringList;
 		try {
 			fileContent->Text = jsonArray->ToString();
 			fileContent->SaveToFile(serversFile);
-
-			delete jsonArray;
 		}
 		__finally {
 			delete fileContent;
 		}
+		delete jsonArray;
 	}
 	MainForm->LoadServers();
 	ServerAddForm->Close();
@@ -122,6 +154,8 @@ void __fastcall TServerAddForm::FormClose(TObject *Sender, TCloseAction &Action)
 	ArgsMemo->Text = "-console -port 27015 -tickrate 33 -game garrysmod +gamemode sandbox ...";
 	ArgsMemo->Font->Color = clSilver;
 	PassEdit->Text = "";
+	EditServer = false;
+	EditServerID = -1;
 	MainForm->LoadServers();
 }
 //---------------------------------------------------------------------------

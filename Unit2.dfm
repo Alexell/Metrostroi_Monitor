@@ -13,6 +13,7 @@ object ServerAddForm: TServerAddForm
   Font.Style = []
   Position = poMainFormCenter
   OnClose = FormClose
+  OnShow = FormShow
   TextHeight = 15
   object ArgsLabel: TLabel
     Left = 8

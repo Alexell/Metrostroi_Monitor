@@ -337,7 +337,6 @@ void __fastcall TMainForm::PMenuRemoveClick(TObject *Sender)
 	try {
 		fileContent->LoadFromFile(serversFile);
 		String jsonData = fileContent->Text;
-
 		TJSONArray *jsonArray = static_cast<TJSONArray*>(TJSONObject::ParseJSONValue(jsonData));
 		if (jsonArray != nullptr) {
 			int selectedIndex = Servers->Selected->Index;
@@ -345,7 +344,7 @@ void __fastcall TMainForm::PMenuRemoveClick(TObject *Sender)
 			if (jsonArray->Count > 0) {
 				fileContent->Text = jsonArray->ToString();
 				fileContent->SaveToFile(serversFile);
-			} else DeleteFile("servers.json");
+			} else DeleteFile(serversFile);
 		}
 		delete jsonArray;
 	}
@@ -450,3 +449,11 @@ void __fastcall TMainForm::RestartSelectedServer(bool shutdown) {
 	}
 }
 //---------------------------------------------------------------------------
+void __fastcall TMainForm::PMenuEditClick(TObject *Sender)
+{
+	ServerAddForm->EditServer = true;
+	ServerAddForm->EditServerID = Servers->Selected->Index;
+	ServerAddForm->ShowModal();
+}
+//---------------------------------------------------------------------------
+

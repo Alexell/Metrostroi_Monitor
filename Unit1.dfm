@@ -234,6 +234,10 @@ object MainForm: TMainForm
     AutoPopup = False
     Left = 96
     Top = 280
+    object PMenuEdit: TMenuItem
+      Caption = #1048#1079#1084#1077#1085#1080#1090#1100
+      OnClick = PMenuEditClick
+    end
     object PMenuRestart: TMenuItem
       Caption = #1055#1077#1088#1077#1079#1072#1075#1088#1091#1079#1080#1090#1100' ('#1084#1103#1075#1082#1086')'
       OnClick = PMenuRestartClick
