@@ -42,8 +42,9 @@ __published:	// IDE-managed Components
 	TActivityIndicator *UpdateInticator;
 	TImage *AlexellLogo;
 	TPopupMenu *PopupMenu;
-	TMenuItem *N1;
-	TMenuItem *N2;
+	TMenuItem *PMenuRestart;
+	TMenuItem *PMenuRemove;
+	TMenuItem *PMenuShutdown;
 	void __fastcall FormShow(TObject *Sender);
 	void __fastcall StartButtonClick(TObject *Sender);
 	void __fastcall TimerTimer(TObject *Sender);
@@ -54,9 +55,13 @@ __published:	// IDE-managed Components
 	void __fastcall AlexellLogoClick(TObject *Sender);
 	void __fastcall ServersMouseDown(TObject *Sender, TMouseButton Button, TShiftState Shift,
           int X, int Y);
-	void __fastcall N2Click(TObject *Sender);
+	void __fastcall PMenuRemoveClick(TObject *Sender);
+	void __fastcall PMenuRestartClick(TObject *Sender);
+	void __fastcall PMenuShutdownClick(TObject *Sender);
 
 private:	// User declarations
+	String __fastcall ExecuteSSQR(const String &command);
+	void __fastcall RestartSelectedServer(bool shutdown);
 public:		// User declarations
     void __fastcall LoadServers();
 	__fastcall TMainForm(TComponent* Owner);

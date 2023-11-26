@@ -78,6 +78,7 @@ void __fastcall TServerAddForm::SaveButtonClick(TObject *Sender)
 			TJSONObject *newServer = new TJSONObject();
 			newServer->AddPair("ip", IPEdit->Text);
 			newServer->AddPair("port", PortEdit->Text);
+			newServer->AddPair("password", PassEdit->Text);
 			newServer->AddPair("exe", FileEdit->Text);
             newServer->AddPair("cmd", CmdMemo->Text);
 
@@ -96,6 +97,7 @@ void __fastcall TServerAddForm::SaveButtonClick(TObject *Sender)
 		TJSONObject *newServer = new TJSONObject();
 		newServer->AddPair("ip", IPEdit->Text);
 		newServer->AddPair("port", PortEdit->Text);
+		newServer->AddPair("password", PassEdit->Text);
 		newServer->AddPair("exe", FileEdit->Text);
 		newServer->AddPair("cmd", CmdMemo->Text);
 
@@ -129,6 +131,7 @@ void __fastcall TServerAddForm::FormClose(TObject *Sender, TCloseAction &Action)
 	FileEdit->Text = "";
 	CmdMemo->Text = "start srcds.exe -console -port 27015 -tickrate 33 -game ...";
 	CmdMemo->Font->Color = clSilver;
+	PassEdit->Text = "";
 	MainForm->LoadServers();
 }
 //---------------------------------------------------------------------------

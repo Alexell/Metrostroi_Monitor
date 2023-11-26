@@ -23,6 +23,8 @@ __published:	// IDE-managed Components
 	TOpenDialog *OpenDialog;
 	TButton *SaveButton;
 	TButton *CancelButton;
+	TLabeledEdit *PassEdit;
+	TLabel *RconNote;
 	void __fastcall FileButtonClick(TObject *Sender);
 	void __fastcall CmdMemoClick(TObject *Sender);
 	void __fastcall SaveButtonClick(TObject *Sender);

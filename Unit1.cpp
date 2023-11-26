@@ -7,7 +7,10 @@
 #include "Unit2.h"
 #include "Unit3.h"
 #include "IniFiles.hpp"
+#include <windows.h>
+#include <TlHelp32.h>
 #include <System.JSON.hpp>
+#include <System.StrUtils.hpp>
 //---------------------------------------------------------------------------
 #pragma package(smart_init)
 #pragma resource "*.dfm"
@@ -291,28 +294,161 @@ void __fastcall TMainForm::ServersMouseDown(TObject *Sender, TMouseButton Button
 }
 //---------------------------------------------------------------------------
 
-void __fastcall TMainForm::N2Click(TObject *Sender)
+bool IsProcessRunning(const wchar_t *processName)
 {
-		TStringList *fileContent = new TStringList;
-		try {
-			fileContent->LoadFromFile(serversFile);
-			String jsonData = fileContent->Text;
+    bool exists = false;
+    HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 
-			TJSONArray *jsonArray = static_cast<TJSONArray*>(TJSONObject::ParseJSONValue(jsonData));
-			if (jsonArray != nullptr) {
-				int selectedIndex = Servers->Selected->Index;
-				if (selectedIndex >= 0 && selectedIndex < jsonArray->Count) jsonArray->Remove(selectedIndex);
-				if (jsonArray->Count > 0) {
-					fileContent->Text = jsonArray->ToString();
-					fileContent->SaveToFile(serversFile);
-				} else DeleteFile("servers.json");
-			}
-			delete jsonArray;
+    if (hSnapshot != INVALID_HANDLE_VALUE) {
+        PROCESSENTRY32 pe;
+        pe.dwSize = sizeof(PROCESSENTRY32);
+
+        if (Process32First(hSnapshot, &pe)) {
+            do {
+                if (wcscmp(pe.szExeFile, processName) == 0) {
+                    exists = true;
+                    break;
+				}
+			} while (Process32Next(hSnapshot, &pe));
 		}
-		__finally {
-			delete fileContent;
-		}
-		LoadServers();
+
+		CloseHandle(hSnapshot);
+	}
+
+	return exists;
 }
 //---------------------------------------------------------------------------
 
+void __fastcall TMainForm::PMenuRestartClick(TObject *Sender)
+{
+	RestartSelectedServer(false);
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TMainForm::PMenuShutdownClick(TObject *Sender)
+{
+	RestartSelectedServer(true);
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TMainForm::PMenuRemoveClick(TObject *Sender)
+{
+	TStringList *fileContent = new TStringList;
+	try {
+		fileContent->LoadFromFile(serversFile);
+		String jsonData = fileContent->Text;
+
+		TJSONArray *jsonArray = static_cast<TJSONArray*>(TJSONObject::ParseJSONValue(jsonData));
+		if (jsonArray != nullptr) {
+			int selectedIndex = Servers->Selected->Index;
+			if (selectedIndex >= 0 && selectedIndex < jsonArray->Count) jsonArray->Remove(selectedIndex);
+			if (jsonArray->Count > 0) {
+				fileContent->Text = jsonArray->ToString();
+				fileContent->SaveToFile(serversFile);
+			} else DeleteFile("servers.json");
+		}
+		delete jsonArray;
+	}
+	__finally {
+		delete fileContent;
+	}
+	LoadServers();
+}
+//---------------------------------------------------------------------------
+
+String __fastcall TMainForm::ExecuteSSQR(const String &command)
+{
+    SECURITY_ATTRIBUTES sa;
+    HANDLE hRead, hWrite;
+    sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+    sa.bInheritHandle = TRUE;
+    sa.lpSecurityDescriptor = NULL;
+
+	// создаем анонимный канал
+    if (!CreatePipe(&hRead, &hWrite, &sa, 0)) {
+		return false;
+	}
+	STARTUPINFO si;
+	PROCESS_INFORMATION pi;
+	ZeroMemory(&si, sizeof(STARTUPINFO));
+	si.cb = sizeof(STARTUPINFO);
+	si.dwFlags |= STARTF_USESHOWWINDOW; // указываем, что используем wShowWindow
+	si.wShowWindow = SW_HIDE; // скрываем окно
+	si.hStdError = hWrite;
+	si.hStdOutput = hWrite;
+	si.dwFlags |= STARTF_USESTDHANDLES;
+
+	// запускаем процесс
+	String exe = "ssqr.exe ";
+	if (!CreateProcess(NULL, (exe + command).c_str(), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
+		CloseHandle(hRead);
+		CloseHandle(hWrite);
+		return false;
+	}
+	CloseHandle(hWrite);
+
+	// читаем вывод
+	DWORD dwRead;
+	CHAR chBuf[4096];
+	String result;
+	while (true) {
+		if (!ReadFile(hRead, chBuf, sizeof(chBuf), &dwRead, NULL) || dwRead == 0) break;
+		result += String(chBuf, dwRead);
+	}
+    CloseHandle(hRead);
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+    return result;
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TMainForm::RestartSelectedServer(bool shutdown) {
+	TStringList *fileContent = new TStringList;
+	try {
+		fileContent->LoadFromFile(serversFile);
+		String jsonData = fileContent->Text;
+
+		TJSONArray *jsonArray = static_cast<TJSONArray*>(TJSONObject::ParseJSONValue(jsonData));
+		if (jsonArray != nullptr) {
+			int selectedIndex = Servers->Selected->Index;
+			if (selectedIndex >= 0 && selectedIndex < jsonArray->Count) {
+				TJSONObject *server = static_cast<TJSONObject*>(jsonArray->Get(selectedIndex));
+				String ip = server->GetValue("ip")->Value();
+				String port = server->GetValue("port")->Value();
+				String pass = server->GetValue("password")->Value();
+				String exe = server->GetValue("exe")->Value();
+				String cmd = server->GetValue("cmd")->Value();
+				if (pass == "") {
+					Application->MessageBox(L"Не указан RCON пароль сервера!", Application->Title.w_str(), MB_OK | MB_ICONEXCLAMATION);
+					return;
+				}
+				String result = ExecuteSSQR("rcon " + ip + " " + port + " \"_restart\" \""+ pass + "\"");
+				if (Trim(result) == "error") {
+					Application->MessageBox(L"Не удалось выполнить RCON команду!", Application->Title.w_str(), MB_OK | MB_ICONERROR);
+					return;
+				}
+				if (shutdown) {
+					logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
+					fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер выключен пользователем.\n").c_str());
+					fclose(logFile);
+				} else {
+					Sleep(3000);
+					String exeName = ExtractFileName(exe);
+					if (!IsProcessRunning(exeName.w_str())) {
+						char *command;
+						command = AnsiString(exe + " " + cmd).c_str();
+						WinExec(command, SW_SHOW);
+						logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
+						fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер перезапущен пользователем.\n").c_str());
+						fclose(logFile);
+					}
+				}
+			}
+		}
+		delete jsonArray;
+	}
+	__finally {
+		delete fileContent;
+	}
+}
+//---------------------------------------------------------------------------

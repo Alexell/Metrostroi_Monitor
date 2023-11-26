@@ -234,13 +234,17 @@ object MainForm: TMainForm
     AutoPopup = False
     Left = 96
     Top = 280
-    object N1: TMenuItem
-      Caption = #1055#1077#1088#1077#1079#1072#1075#1088#1091#1079#1080#1090#1100
-      Enabled = False
+    object PMenuRestart: TMenuItem
+      Caption = #1055#1077#1088#1077#1079#1072#1075#1088#1091#1079#1080#1090#1100' ('#1084#1103#1075#1082#1086')'
+      OnClick = PMenuRestartClick
     end
-    object N2: TMenuItem
+    object PMenuShutdown: TMenuItem
+      Caption = #1042#1099#1082#1083#1102#1095#1080#1090#1100' ('#1084#1103#1075#1082#1086')'
+      OnClick = PMenuShutdownClick
+    end
+    object PMenuRemove: TMenuItem
       Caption = #1059#1076#1072#1083#1080#1090#1100
-      OnClick = N2Click
+      OnClick = PMenuRemoveClick
     end
   end
 end
