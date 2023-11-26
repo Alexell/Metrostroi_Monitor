@@ -21,20 +21,16 @@ __fastcall TServerAddForm::TServerAddForm(TComponent* Owner)
 
 void __fastcall TServerAddForm::FileButtonClick(TObject *Sender)
 {
-	if (OpenDialog->Execute()) {
-		FileEdit->Text = OpenDialog->FileName;
-		CmdMemo->Text = "start " + ExtractFileName(FileEdit->Text) + " ";
-		CmdMemo->Font->Color = clBlack;
-	}
+	if (OpenDialog->Execute()) FileEdit->Text = OpenDialog->FileName;
 }
 //---------------------------------------------------------------------------
 
-void __fastcall TServerAddForm::CmdMemoClick(TObject *Sender)
+void __fastcall TServerAddForm::ArgsMemoClick(TObject *Sender)
 {
 	// очистка поля командной строки при настройке
-	if (CmdMemo->Text.Pos("...")) {
-		CmdMemo->Text = "";
-		CmdMemo->Font->Color = clBlack;
+	if (ArgsMemo->Text.Pos("...")) {
+		ArgsMemo->Text = "";
+		ArgsMemo->Font->Color = clBlack;
 	}
 }
 //---------------------------------------------------------------------------
@@ -47,7 +43,7 @@ bool IsValidIPAddress(const String &ipAddress)
 
 void __fastcall TServerAddForm::SaveButtonClick(TObject *Sender)
 {
-	if (IPEdit->Text == "" || PortEdit->Text == "" || FileEdit->Text == "" || CmdMemo->Text == "" || CmdMemo->Text.Pos("...")) {
+	if (IPEdit->Text == "" || PortEdit->Text == "" || FileEdit->Text == "" || ArgsMemo->Text == "" || ArgsMemo->Text.Pos("...")) {
 		Application->MessageBox(L"Не заполнены настройки!", Application->Title.w_str(), MB_OK | MB_ICONERROR);
 		return;
 	}
@@ -55,15 +51,9 @@ void __fastcall TServerAddForm::SaveButtonClick(TObject *Sender)
 		Application->MessageBox(L"Неверно указан IP адрес!", Application->Title.w_str(), MB_OK | MB_ICONERROR);
 		return;
 	}
-	CmdMemo->Text = StringReplace(CmdMemo->Text, " /wait", "", TReplaceFlags() << rfReplaceAll);
-	String cmdStart = "start "+ExtractFileName(FileEdit->Text);
-	if (!StartsStr(cmdStart, CmdMemo->Text)) {
-		String Message = "Командная строка должна начинаться со \"" + cmdStart + "\"!";
-		Application->MessageBox(Message.w_str(), Application->Title.w_str(), MB_OK | MB_ICONEXCLAMATION);
-		return;
-	}
+	ArgsMemo->Text = StringReplace(ArgsMemo->Text, " /wait", "", TReplaceFlags() << rfReplaceAll);
 
-    String serversFile = "servers.json";
+	String serversFile = "servers.json";
 	if (FileExists(serversFile)) { // добавляем новый сервер в json
 		TStringList *fileContent = new TStringList;
 		try {
@@ -80,7 +70,7 @@ void __fastcall TServerAddForm::SaveButtonClick(TObject *Sender)
 			newServer->AddPair("port", PortEdit->Text);
 			newServer->AddPair("password", PassEdit->Text);
 			newServer->AddPair("exe", FileEdit->Text);
-            newServer->AddPair("cmd", CmdMemo->Text);
+			newServer->AddPair("args", ArgsMemo->Text);
 
 			jsonArray->Add(newServer);
 
@@ -99,7 +89,7 @@ void __fastcall TServerAddForm::SaveButtonClick(TObject *Sender)
 		newServer->AddPair("port", PortEdit->Text);
 		newServer->AddPair("password", PassEdit->Text);
 		newServer->AddPair("exe", FileEdit->Text);
-		newServer->AddPair("cmd", CmdMemo->Text);
+		newServer->AddPair("args", ArgsMemo->Text);
 
 		jsonArray->Add(newServer);
 
@@ -129,8 +119,8 @@ void __fastcall TServerAddForm::FormClose(TObject *Sender, TCloseAction &Action)
 	IPEdit->Text = "";
 	PortEdit->Text = "";
 	FileEdit->Text = "";
-	CmdMemo->Text = "start srcds.exe -console -port 27015 -tickrate 33 -game ...";
-	CmdMemo->Font->Color = clSilver;
+	ArgsMemo->Text = "-console -port 27015 -tickrate 33 -game garrysmod +gamemode sandbox ...";
+	ArgsMemo->Font->Color = clSilver;
 	PassEdit->Text = "";
 	MainForm->LoadServers();
 }

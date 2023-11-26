@@ -18,15 +18,15 @@ __published:	// IDE-managed Components
 	TLabeledEdit *PortEdit;
 	TLabeledEdit *FileEdit;
 	TButton *FileButton;
-	TLabel *CmdLabel;
-	TMemo *CmdMemo;
+	TLabel *ArgsLabel;
+	TMemo *ArgsMemo;
 	TOpenDialog *OpenDialog;
 	TButton *SaveButton;
 	TButton *CancelButton;
 	TLabeledEdit *PassEdit;
 	TLabel *RconNote;
 	void __fastcall FileButtonClick(TObject *Sender);
-	void __fastcall CmdMemoClick(TObject *Sender);
+	void __fastcall ArgsMemoClick(TObject *Sender);
 	void __fastcall SaveButtonClick(TObject *Sender);
 	void __fastcall CancelButtonClick(TObject *Sender);
 	void __fastcall FormClose(TObject *Sender, TCloseAction &Action);

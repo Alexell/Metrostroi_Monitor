@@ -417,7 +417,7 @@ void __fastcall TMainForm::RestartSelectedServer(bool shutdown) {
 				String port = server->GetValue("port")->Value();
 				String pass = server->GetValue("password")->Value();
 				String exe = server->GetValue("exe")->Value();
-				String cmd = server->GetValue("cmd")->Value();
+				String args = server->GetValue("args")->Value();
 				if (pass == "") {
 					Application->MessageBox(L"Не указан RCON пароль сервера!", Application->Title.w_str(), MB_OK | MB_ICONEXCLAMATION);
 					return;
@@ -435,9 +435,7 @@ void __fastcall TMainForm::RestartSelectedServer(bool shutdown) {
 					Sleep(3000);
 					String exeName = ExtractFileName(exe);
 					if (!IsProcessRunning(exeName.w_str())) {
-						char *command;
-						command = AnsiString(exe + " " + cmd).c_str();
-						WinExec(command, SW_SHOW);
+						ShellExecute(NULL, L"open", exe.c_str(), args.c_str(), ExtractFileDir(exe).c_str(), SW_SHOWNORMAL);
 						logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
 						fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер перезапущен пользователем.\n").c_str());
 						fclose(logFile);
