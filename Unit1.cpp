@@ -58,16 +58,15 @@ void __fastcall TMainForm::FormCreate(TObject *Sender)
 //---------------------------------------------------------------------------
 
 void __fastcall TMainForm::LoadServers() {
+	Servers->Items->Clear();
 	if (FileExists(serversFile)) {
 		TStringList *fileContent = new TStringList;
 		try {
 			fileContent->LoadFromFile(serversFile);
 			String jsonData = fileContent->Text;
-
 			TJSONArray *jsonArray = static_cast<TJSONArray*>(TJSONObject::ParseJSONValue(jsonData));
 			if (jsonArray != nullptr) {
 				Servers->Items->BeginUpdate();
-				Servers->Items->Clear();
 				for (int i = 0; i < jsonArray->Count; i++) {
 					TJSONObject *server = static_cast<TJSONObject*>(jsonArray->Get(i));
 					String ip = server->GetValue("ip")->Value();
@@ -279,6 +278,41 @@ void __fastcall TMainForm::AddButtonClick(TObject *Sender)
 void __fastcall TMainForm::AlexellLogoClick(TObject *Sender)
 {
 	AboutForm->ShowModal();
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TMainForm::ServersMouseDown(TObject *Sender, TMouseButton Button,
+          TShiftState Shift, int X, int Y)
+{
+	if (Button == mbRight && Servers->Selected != nullptr) {
+		TPoint point = Servers->ClientToScreen(Point(X, Y));
+		PopupMenu->Popup(point.x, point.y);
+	}
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TMainForm::N2Click(TObject *Sender)
+{
+		TStringList *fileContent = new TStringList;
+		try {
+			fileContent->LoadFromFile(serversFile);
+			String jsonData = fileContent->Text;
+
+			TJSONArray *jsonArray = static_cast<TJSONArray*>(TJSONObject::ParseJSONValue(jsonData));
+			if (jsonArray != nullptr) {
+				int selectedIndex = Servers->Selected->Index;
+				if (selectedIndex >= 0 && selectedIndex < jsonArray->Count) jsonArray->Remove(selectedIndex);
+				if (jsonArray->Count > 0) {
+					fileContent->Text = jsonArray->ToString();
+					fileContent->SaveToFile(serversFile);
+				} else DeleteFile("servers.json");
+			}
+			delete jsonArray;
+		}
+		__finally {
+			delete fileContent;
+		}
+		LoadServers();
 }
 //---------------------------------------------------------------------------
 

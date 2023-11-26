@@ -174,6 +174,7 @@ object MainForm: TMainForm
     RowSelect = True
     TabOrder = 7
     ViewStyle = vsReport
+    OnMouseDown = ServersMouseDown
   end
   object AddButton: TButton
     Left = 8
@@ -228,5 +229,18 @@ object MainForm: TMainForm
   end
   object Tray: TTrayIcon
     Top = 280
+  end
+  object PopupMenu: TPopupMenu
+    AutoPopup = False
+    Left = 96
+    Top = 280
+    object N1: TMenuItem
+      Caption = #1055#1077#1088#1077#1079#1072#1075#1088#1091#1079#1080#1090#1100
+      Enabled = False
+    end
+    object N2: TMenuItem
+      Caption = #1059#1076#1072#1083#1080#1090#1100
+      OnClick = N2Click
+    end
   end
 end

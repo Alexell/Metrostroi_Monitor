@@ -19,6 +19,7 @@
 #include <Vcl.ComCtrls.hpp>
 #include <Vcl.WinXCtrls.hpp>
 #include <Vcl.Imaging.pngimage.hpp>
+#include <Vcl.Menus.hpp>
 //---------------------------------------------------------------------------
 class TMainForm : public TForm
 {
@@ -40,6 +41,9 @@ __published:	// IDE-managed Components
 	TLabeledEdit *DownEdit;
 	TActivityIndicator *UpdateInticator;
 	TImage *AlexellLogo;
+	TPopupMenu *PopupMenu;
+	TMenuItem *N1;
+	TMenuItem *N2;
 	void __fastcall FormShow(TObject *Sender);
 	void __fastcall StartButtonClick(TObject *Sender);
 	void __fastcall TimerTimer(TObject *Sender);
@@ -48,6 +52,10 @@ __published:	// IDE-managed Components
 	void __fastcall AddButtonClick(TObject *Sender);
 	void __fastcall FormCreate(TObject *Sender);
 	void __fastcall AlexellLogoClick(TObject *Sender);
+	void __fastcall ServersMouseDown(TObject *Sender, TMouseButton Button, TShiftState Shift,
+          int X, int Y);
+	void __fastcall N2Click(TObject *Sender);
+
 private:	// User declarations
 public:		// User declarations
     void __fastcall LoadServers();
