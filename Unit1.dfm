@@ -94,6 +94,7 @@ object MainForm: TMainForm
     EditLabel.ParentFont = False
     LabelPosition = lpLeft
     LabelSpacing = 13
+    NumbersOnly = True
     TabOrder = 0
     Text = '60'
   end
@@ -117,6 +118,7 @@ object MainForm: TMainForm
     Top = 165
     Width = 18
     Height = 23
+    NumbersOnly = True
     TabOrder = 2
     Text = '00'
   end
@@ -125,6 +127,7 @@ object MainForm: TMainForm
     Top = 165
     Width = 18
     Height = 23
+    NumbersOnly = True
     TabOrder = 3
     Text = '00'
   end
@@ -202,6 +205,7 @@ object MainForm: TMainForm
     EditLabel.ShowHint = True
     LabelPosition = lpLeft
     LabelSpacing = 56
+    NumbersOnly = True
     TabOrder = 9
     Text = '1'
   end

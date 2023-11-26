@@ -6,6 +6,8 @@
 #include "Unit1.h"
 #include "Unit2.h"
 #include <System.JSON.hpp>
+#include <System.StrUtils.hpp>
+#include <System.RegularExpressions.hpp>
 //---------------------------------------------------------------------------
 #pragma package(smart_init)
 #pragma resource "*.dfm"
@@ -19,26 +21,29 @@ __fastcall TServerAddForm::TServerAddForm(TComponent* Owner)
 
 void __fastcall TServerAddForm::FileButtonClick(TObject *Sender)
 {
-	if (OpenDialog->Execute()) FileEdit->Text = OpenDialog->FileName;
+	if (OpenDialog->Execute()) {
+		FileEdit->Text = OpenDialog->FileName;
+		CmdMemo->Text = "start " + ExtractFileName(FileEdit->Text) + " ";
+		CmdMemo->Font->Color = clBlack;
+	}
 }
 //---------------------------------------------------------------------------
 
 void __fastcall TServerAddForm::CmdMemoClick(TObject *Sender)
 {
 	// очистка поля командной строки при настройке
-	if (CmdMemo->Text.Pos("...")) CmdMemo->Text = "";
+	if (CmdMemo->Text.Pos("...")) {
+		CmdMemo->Text = "";
+		CmdMemo->Font->Color = clBlack;
+	}
 }
 //---------------------------------------------------------------------------
 
-void __fastcall TServerAddForm::IPEditKeyPress(TObject *Sender, System::WideChar &Key)
-
+bool IsValidIPAddress(const String &ipAddress)
 {
-	// фильтр для поля IP адреса
-	if ((Key >= '0' && Key <= '9') || Key == '.' || Key == VK_BACK) {}
-	else Key = 0;
+    return TRegEx::Match(ipAddress, L"^(\\d{1,3}(\\.\\d{1,3}){3})$").Success;
 }
 //---------------------------------------------------------------------------
-
 
 void __fastcall TServerAddForm::SaveButtonClick(TObject *Sender)
 {
@@ -46,9 +51,15 @@ void __fastcall TServerAddForm::SaveButtonClick(TObject *Sender)
 		Application->MessageBox(L"Не заполнены настройки!", Application->Title.w_str(), MB_OK | MB_ICONERROR);
 		return;
 	}
-	if (CmdMemo->Text.SubString(0, 11) == "start /wait") CmdMemo->Text = StringReplace(CmdMemo->Text," /wait","",TReplaceFlags() << rfReplaceAll);
-	if (CmdMemo->Text.SubString(0, 5) != "start") {
-		Application->MessageBox(L"Командная строка должна начинаться со \"start\"!", Application->Title.w_str(), MB_OK | MB_ICONEXCLAMATION);
+	if (!IsValidIPAddress(IPEdit->Text)) {
+		Application->MessageBox(L"Неверно указан IP адрес!", Application->Title.w_str(), MB_OK | MB_ICONERROR);
+		return;
+	}
+	CmdMemo->Text = StringReplace(CmdMemo->Text, " /wait", "", TReplaceFlags() << rfReplaceAll);
+	String cmdStart = "start "+ExtractFileName(FileEdit->Text);
+	if (!StartsStr(cmdStart, CmdMemo->Text)) {
+		String Message = "Командная строка должна начинаться со \"" + cmdStart + "\"!";
+		Application->MessageBox(Message.w_str(), Application->Title.w_str(), MB_OK | MB_ICONEXCLAMATION);
 		return;
 	}
 
@@ -101,12 +112,24 @@ void __fastcall TServerAddForm::SaveButtonClick(TObject *Sender)
 			delete fileContent;
 		}
 	}
+	MainForm->LoadServers();
+	ServerAddForm->Close();
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TServerAddForm::CancelButtonClick(TObject *Sender)
+{
+	ServerAddForm->Close();
+}
+//---------------------------------------------------------------------------
+void __fastcall TServerAddForm::FormClose(TObject *Sender, TCloseAction &Action)
+{
 	IPEdit->Text = "";
 	PortEdit->Text = "";
 	FileEdit->Text = "";
-	CmdMemo->Text = "start srcds.exe -console -port 27017 -tickrate 33 -game ...";
+	CmdMemo->Text = "start srcds.exe -console -port 27015 -tickrate 33 -game ...";
+	CmdMemo->Font->Color = clSilver;
 	MainForm->LoadServers();
-	ServerAddForm->Close();
 }
 //---------------------------------------------------------------------------
 

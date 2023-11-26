@@ -25,8 +25,9 @@ __published:	// IDE-managed Components
 	TButton *CancelButton;
 	void __fastcall FileButtonClick(TObject *Sender);
 	void __fastcall CmdMemoClick(TObject *Sender);
-	void __fastcall IPEditKeyPress(TObject *Sender, System::WideChar &Key);
 	void __fastcall SaveButtonClick(TObject *Sender);
+	void __fastcall CancelButtonClick(TObject *Sender);
+	void __fastcall FormClose(TObject *Sender, TCloseAction &Action);
 private:	// User declarations
 public:		// User declarations
 	__fastcall TServerAddForm(TComponent* Owner);

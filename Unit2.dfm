@@ -1,6 +1,7 @@
 object ServerAddForm: TServerAddForm
   Left = 0
   Top = 0
+  BorderStyle = bsDialog
   Caption = #1044#1086#1073#1072#1074#1080#1090#1100' '#1089#1077#1088#1074#1077#1088
   ClientHeight = 261
   ClientWidth = 304
@@ -11,6 +12,7 @@ object ServerAddForm: TServerAddForm
   Font.Name = 'Segoe UI'
   Font.Style = []
   Position = poMainFormCenter
+  OnClose = FormClose
   TextHeight = 15
   object CmdLabel: TLabel
     Left = 8
@@ -28,9 +30,9 @@ object ServerAddForm: TServerAddForm
     EditLabel.Width = 47
     EditLabel.Height = 15
     EditLabel.Caption = 'IP '#1072#1076#1088#1077#1089':'
+    MaxLength = 15
     TabOrder = 0
     Text = ''
-    OnKeyPress = IPEditKeyPress
   end
   object PortEdit: TLabeledEdit
     Left = 111
@@ -40,6 +42,7 @@ object ServerAddForm: TServerAddForm
     EditLabel.Width = 31
     EditLabel.Height = 15
     EditLabel.Caption = #1055#1086#1088#1090':'
+    NumbersOnly = True
     TabOrder = 1
     Text = '27015'
   end
@@ -68,9 +71,15 @@ object ServerAddForm: TServerAddForm
     Top = 125
     Width = 286
     Height = 89
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clSilver
+    Font.Height = -12
+    Font.Name = 'Segoe UI'
+    Font.Style = []
     Lines.Strings = (
       'start srcds.exe -console -port 27017 -tickrate 33 -'
       'game ...')
+    ParentFont = False
     TabOrder = 4
     OnClick = CmdMemoClick
   end
@@ -90,6 +99,7 @@ object ServerAddForm: TServerAddForm
     Height = 25
     Caption = #1054#1090#1084#1077#1085#1072
     TabOrder = 6
+    OnClick = CancelButtonClick
   end
   object OpenDialog: TOpenDialog
     FileName = 'srcds.exe'
