@@ -47,6 +47,8 @@ __published:	// IDE-managed Components
 	TMenuItem *PMenuShutdown;
 	TMenuItem *PMenuEdit;
 	TTimer *RestartTimer;
+	TCheckBox *AutorunCheck;
+	TCheckBox *LogCheck;
 	void __fastcall FormShow(TObject *Sender);
 	void __fastcall StartButtonClick(TObject *Sender);
 	void __fastcall TimerTimer(TObject *Sender);

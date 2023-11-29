@@ -78,9 +78,9 @@ object AboutForm: TAboutForm
   object VersionLabel: TLabel
     Left = 64
     Top = 16
-    Width = 97
+    Width = 17
     Height = 15
-    Caption = '2.0 '#1086#1090' 00.00.0000'
+    Caption = '2.0'
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clWindowText
     Font.Height = -12
@@ -406,6 +406,21 @@ object AboutForm: TAboutForm
       691F089E802C54D3A04AA9BA29202C4E383C9EBCCABADAD29B7AB497FED931FC
       4701F27FE5F82F20DF3BFE0BC8F78EFF010763A844B1F776B50000000049454E
       44AE426082}
+  end
+  object GitHubLink: TLabel
+    Left = 87
+    Top = 16
+    Width = 40
+    Height = 15
+    Cursor = crHandPoint
+    Caption = 'GitHub'
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clBlue
+    Font.Height = -12
+    Font.Name = 'Segoe UI'
+    Font.Style = [fsBold, fsUnderline]
+    ParentFont = False
+    OnClick = GitHubLinkClick
   end
   object CloseButton: TButton
     Left = 55

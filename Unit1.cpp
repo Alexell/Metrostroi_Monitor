@@ -6,9 +6,10 @@
 #include "Unit1.h"
 #include "Unit2.h"
 #include "Unit3.h"
-#include "IniFiles.hpp"
 #include <windows.h>
 #include <TlHelp32.h>
+#include <IniFiles.hpp>
+#include <Registry.hpp>
 #include <System.JSON.hpp>
 #include <System.StrUtils.hpp>
 //---------------------------------------------------------------------------
@@ -45,8 +46,10 @@ void __fastcall TMainForm::FormCreate(TObject *Sender)
 		MinEdit->Text = Settings->ReadString("Options", "RestartMinute", "00");
 		IntEdit->Text = Settings->ReadString("Options", "Interval", 60);
 		DownEdit->Text = Settings->ReadString("Options", "DownCount", 1);
-		AutostartCheck->Checked = Settings->ReadBool("Options", "Autostart", 0);
+		AutostartCheck->Checked = Settings->ReadBool("Options", "AutoStartMon", 0);
 		HideCheck->Checked = Settings->ReadBool("Options", "Minimized", 0);
+		LogCheck->Checked = Settings->ReadBool("Options", "Logging", 0);
+		AutorunCheck->Checked = Settings->ReadBool("Options", "AutoRun", 0);
 		MainForm->Top = Settings->ReadInteger("Position", "Top", 0);
 		MainForm->Left = Settings->ReadInteger("Position", "Left", 0);
 		delete Settings;
@@ -91,6 +94,39 @@ void __fastcall TMainForm::LoadServers() {
 }
 //---------------------------------------------------------------------------
 
+void AddToStartup() {
+	AnsiString appName = Application->Title;
+	AnsiString appPath = Application->ExeName;
+	std::unique_ptr<TRegistry> reg(new TRegistry());
+	reg->RootKey = HKEY_CURRENT_USER;
+	try {
+		if (reg->OpenKey("\\Software\\Microsoft\\Windows\\CurrentVersion\\Run", true)) {
+			if (!reg->ValueExists(appName)) reg->WriteString(appName, appPath);
+			reg->CloseKey();
+		}
+	}
+	catch (const Exception& e) {
+		Application->MessageBox(e.Message.c_str(), Application->Title.w_str(), MB_OK | MB_ICONERROR);
+	}
+}
+//---------------------------------------------------------------------------
+
+void RemoveFromStartup() {
+	AnsiString appName = Application->Title;
+	std::unique_ptr<TRegistry> reg(new TRegistry());
+	reg->RootKey = HKEY_CURRENT_USER;
+	try {
+		if (reg->OpenKey("\\Software\\Microsoft\\Windows\\CurrentVersion\\Run", false)) {
+			if (reg->ValueExists(appName)) reg->DeleteValue(appName);
+			reg->CloseKey();
+		}
+	}
+	catch (const Exception& e) {
+		Application->MessageBox(e.Message.c_str(), Application->Title.w_str(), MB_OK | MB_ICONERROR);
+	}
+}
+//---------------------------------------------------------------------------
+
 void __fastcall TMainForm::FormShow(TObject *Sender)
 {
 	if (HideCheck->Checked) Application->Minimize();
@@ -131,10 +167,16 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 		Settings->WriteString("Options", "RestartMinute", MinEdit->Text);
 		Settings->WriteString("Options", "Interval", IntEdit->Text);
 		Settings->WriteString("Options", "DownCount", DownEdit->Text);
-		Settings->WriteBool("Options", "Autostart", AutostartCheck->Checked);
+		Settings->WriteBool("Options", "AutoStartMon", AutostartCheck->Checked);
 		Settings->WriteBool("Options", "Minimized", HideCheck->Checked);
+		Settings->WriteBool("Options", "Logging", LogCheck->Checked);
+		Settings->WriteBool("Options", "AutoRun", AutorunCheck->Checked);
 		Settings->UpdateFile();
 		delete Settings;
+
+		// автозапуск
+		if (AutorunCheck->Checked) AddToStartup();
+		else RemoveFromStartup();
 
 		// блокировка элементов формы
 		IntEdit->Enabled = false;
@@ -145,6 +187,8 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 		AutostartCheck->Enabled = false;
 		HideCheck->Enabled = false;
 		AddButton->Enabled = false;
+		AutorunCheck->Enabled = false;
+		LogCheck->Enabled = false;
 		Timer->Interval = StrToInt(IntEdit->Text) * 1000;
 
 		// загрузка данных серверов
@@ -171,9 +215,11 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 		}
 		TimerTimer(Timer);
 		StartButton->Caption = "Остановить мониторинг";
-		logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
-		fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Мониторинг запущен.\n").c_str());
-		fclose(logFile);
+		if (LogCheck->Checked) {
+			logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
+			fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Мониторинг запущен.\n").c_str());
+			fclose(logFile);
+		}
 	} else {
 		// разблокировка элементов формы
 		IntEdit->Enabled = true;
@@ -186,15 +232,20 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 		AutostartCheck->Enabled = true;
 		HideCheck->Enabled = true;
 		AddButton->Enabled = true;
+		AutorunCheck->Enabled = true;
+		LogCheck->Enabled = true;
 
 		// остановка таймеров
 		Timer->Enabled = false;
 		RestartTimer->Enabled = false;
 		started = false;
 		StartButton->Caption = "Начать мониторинг";
-		logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName)+"log.txt").c_str(), "a+");
-		fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Мониторинг остановлен.\n").c_str());
-		fclose(logFile);
+		if (LogCheck->Checked) {
+			logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName)+"log.txt").c_str(), "a+");
+			fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Мониторинг остановлен.\n").c_str());
+			fclose(logFile);
+		}
+
 	}
 }
 //---------------------------------------------------------------------------
@@ -262,23 +313,29 @@ void __fastcall TMonitoringThread::Execute()
 			});
 
 			if (DownCount == StrToInt(MainForm->DownEdit->Text)) {
-				logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
-				fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер " + serverAddr + " недоступен.\n").c_str());
-				fclose(logFile);
+				if (MainForm->LogCheck->Checked) {
+					logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
+					fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер " + serverAddr + " недоступен.\n").c_str());
+					fclose(logFile);
+				}
 
 				// убиваем процесс
 				system(AnsiString("taskkill /IM " + ExtractFileName(exe) + " /F").c_str());
-				logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
-				fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер " + serverAddr + " перезапускается...\n").c_str());
-				fclose(logFile);
+				if (MainForm->LogCheck->Checked) {
+					logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
+					fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер " + serverAddr + " перезапускается...\n").c_str());
+					fclose(logFile);
+				}
 
 				// запускаем сервер
-				logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
+				if (MainForm->LogCheck->Checked) logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
 				if (FileExists(exe)) {
 					ShellExecute(NULL, L"open", exe.c_str(), args.c_str(), ExtractFileDir(exe).c_str(), SW_SHOWNORMAL);
-					fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер " + serverAddr + " запущен.\n").c_str());
-				} else fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Файл \"" + exe + "\" не найден!\n").c_str());
-				fclose(logFile);
+					if (logFile != nullptr) fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер " + serverAddr + " запущен.\n").c_str());
+				} else {
+					if (logFile != nullptr) fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Файл \"" + exe + "\" не найден!\n").c_str());
+				}
+				if (logFile != nullptr) fclose(logFile);
 
 				DownCount = 0;
 			}
@@ -294,9 +351,9 @@ void __fastcall TMonitoringThread::Execute()
 void __fastcall TMainForm::TimerTimer(TObject *Sender)
 {
 	if (serversArray != nullptr) {
-		Timer->Enabled = false;
-		UpdateInticator->Animate = true;
 		if (monitoringThread == nullptr || monitoringThread->Finished) {
+			Timer->Enabled = false;
+			UpdateInticator->Animate = true;
 			monitoringThread = new TMonitoringThread(true);
 			monitoringThread->Start();
 		}
@@ -319,7 +376,7 @@ void __fastcall TMainForm::RestartCheckClick(TObject *Sender)
 
 void __fastcall TMainForm::FormClose(TObject *Sender, TCloseAction &Action)
 {
-	if (started == true) {
+	if (started == true && LogCheck->Checked) {
 		logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
 		fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Мониторинг прерван.\n").c_str());
 		fclose(logFile);
@@ -491,18 +548,22 @@ void __fastcall TMainForm::RestartSelectedServer(bool shutdown) {
 					return;
 				}
 				if (shutdown) {
-					logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
-					fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер " + serverAddr + " выключен пользователем.\n").c_str());
-					fclose(logFile);
+					if (LogCheck->Checked) {
+						logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
+						fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер " + serverAddr + " выключен пользователем.\n").c_str());
+						fclose(logFile);
+					}
 				} else {
 					Sleep(3000);
 					String exeName = ExtractFileName(exe);
 					if (!IsProcessRunning(exeName.w_str())) {
 						if (FileExists(exe)) {
 							ShellExecute(NULL, L"open", exe.c_str(), args.c_str(), ExtractFileDir(exe).c_str(), SW_SHOWNORMAL);
-							logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
-							fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер " + serverAddr + " перезапущен пользователем.\n").c_str());
-							fclose(logFile);
+							if (LogCheck->Checked) {
+								logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
+								fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер " + serverAddr + " перезапущен пользователем.\n").c_str());
+								fclose(logFile);
+							}
 						} else Application->MessageBox(("Файл \"" + exe + "\" не найден!").w_str(), Application->Title.w_str(), MB_OK | MB_ICONERROR);
 					}
 				}
@@ -545,9 +606,9 @@ void __fastcall TMainForm::RestartTimerTimer(TObject *Sender)
 
 				// мягко выключаем или убиваем процесс
 				String exeName = ExtractFileName(exe);
-				logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
+				if (LogCheck->Checked) logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
 				if (IsProcessRunning(exeName.w_str())) {
-					fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Выключение сервера " + serverAddr + " по расписанию...\n").c_str());
+					if (logFile != nullptr) fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Выключение сервера " + serverAddr + " по расписанию...\n").c_str());
 					if (pass != "") {
 						String result = ExecuteSSQR("rcon " + ip + " " + port + " \"_restart\" \""+ pass + "\"");
 						if (Trim(result) == "error") {
@@ -555,9 +616,9 @@ void __fastcall TMainForm::RestartTimerTimer(TObject *Sender)
 						}
 					} else system(AnsiString("taskkill /IM " + exeName + " /F").c_str());
 				} else {
-					fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер " + serverAddr + " не работает, выключение по расписанию не требуется.\n").c_str());
+					if (logFile != nullptr) fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер " + serverAddr + " не работает, выключение по расписанию не требуется.\n").c_str());
 				}
-				fclose(logFile);
+				if (logFile != nullptr) fclose(logFile);
 			}
 			Timer->Enabled = true;
 			RestartTimer->Enabled = true;

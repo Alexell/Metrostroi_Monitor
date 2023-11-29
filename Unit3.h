@@ -24,9 +24,11 @@ __published:	// IDE-managed Components
 	TImage *MSSLogo;
 	TButton *CloseButton;
 	TPanel *Hr;
+	TLabel *GitHubLink;
 	void __fastcall AlexellLinkClick(TObject *Sender);
 	void __fastcall MSSLinkClick(TObject *Sender);
 	void __fastcall CloseButtonClick(TObject *Sender);
+	void __fastcall GitHubLinkClick(TObject *Sender);
 private:	// User declarations
 public:		// User declarations
 	__fastcall TAboutForm(TComponent* Owner);

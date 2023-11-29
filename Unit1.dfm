@@ -4,7 +4,7 @@ object MainForm: TMainForm
   BorderIcons = [biSystemMenu, biMinimize]
   BorderStyle = bsSingle
   Caption = 'MainForm'
-  ClientHeight = 309
+  ClientHeight = 321
   ClientWidth = 524
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -44,7 +44,7 @@ object MainForm: TMainForm
   end
   object AlexellLogo: TImage
     Left = 476
-    Top = 261
+    Top = 273
     Width = 40
     Height = 40
     Cursor = crHandPoint
@@ -149,7 +149,7 @@ object MainForm: TMainForm
   end
   object StartButton: TButton
     Left = 143
-    Top = 276
+    Top = 288
     Width = 250
     Height = 25
     Caption = #1053#1072#1095#1072#1090#1100' '#1084#1086#1085#1080#1090#1086#1088#1080#1085#1075
@@ -228,29 +228,63 @@ object MainForm: TMainForm
   end
   object UpdateInticator: TActivityIndicator
     Left = 8
-    Top = 277
+    Top = 289
     IndicatorSize = aisSmall
     IndicatorType = aitRotatingSector
+  end
+  object AutorunCheck: TCheckBox
+    Left = 227
+    Top = 257
+    Width = 97
+    Height = 17
+    Hint = #1047#1072#1087#1091#1089#1082#1072#1090#1100' '#1087#1088#1086#1075#1088#1072#1084#1084#1091' '#1074#1084#1077#1089#1090#1077' '#1089' Windows'
+    Caption = #1040#1074#1090#1086#1079#1072#1087#1091#1089#1082
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -12
+    Font.Name = 'Segoe UI'
+    Font.Style = [fsBold]
+    ParentFont = False
+    ParentShowHint = False
+    ShowHint = True
+    TabOrder = 11
+  end
+  object LogCheck: TCheckBox
+    Left = 355
+    Top = 257
+    Width = 106
+    Height = 17
+    Hint = #1047#1072#1087#1080#1089#1100' '#1074#1089#1077#1093' '#1089#1086#1073#1099#1090#1080#1081' '#1074' log.txt'
+    Caption = #1051#1086#1075#1080#1088#1086#1074#1072#1085#1080#1077
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -12
+    Font.Name = 'Segoe UI'
+    Font.Style = [fsBold]
+    ParentFont = False
+    ParentShowHint = False
+    ShowHint = True
+    TabOrder = 12
   end
   object Timer: TTimer
     Enabled = False
     Interval = 60000
     OnTimer = TimerTimer
     Left = 40
-    Top = 280
+    Top = 296
   end
   object IdAntiFreeze: TIdAntiFreeze
     Left = 104
-    Top = 280
+    Top = 296
   end
   object Tray: TTrayIcon
     Left = 72
-    Top = 280
+    Top = 296
   end
   object PopupMenu: TPopupMenu
     AutoPopup = False
     Left = 400
-    Top = 280
+    Top = 296
     object PMenuEdit: TMenuItem
       Caption = #1048#1079#1084#1077#1085#1080#1090#1100
       OnClick = PMenuEditClick
@@ -273,6 +307,6 @@ object MainForm: TMainForm
     Interval = 60000
     OnTimer = RestartTimerTimer
     Left = 432
-    Top = 280
+    Top = 296
   end
 end

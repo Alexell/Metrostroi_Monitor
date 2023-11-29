@@ -29,3 +29,9 @@ void __fastcall TAboutForm::CloseButtonClick(TObject *Sender)
     AboutForm->Close();
 }
 //---------------------------------------------------------------------------
+void __fastcall TAboutForm::GitHubLinkClick(TObject *Sender)
+{
+    ShellExecute(NULL, L"open", L"https://github.com/Alexell/Metrostroi_Monitor", NULL, NULL, SW_SHOWNORMAL);
+}
+//---------------------------------------------------------------------------
+
