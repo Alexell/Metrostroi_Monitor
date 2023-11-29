@@ -46,6 +46,7 @@ __published:	// IDE-managed Components
 	TMenuItem *PMenuRemove;
 	TMenuItem *PMenuShutdown;
 	TMenuItem *PMenuEdit;
+	TTimer *RestartTimer;
 	void __fastcall FormShow(TObject *Sender);
 	void __fastcall StartButtonClick(TObject *Sender);
 	void __fastcall TimerTimer(TObject *Sender);
@@ -60,6 +61,7 @@ __published:	// IDE-managed Components
 	void __fastcall PMenuRestartClick(TObject *Sender);
 	void __fastcall PMenuShutdownClick(TObject *Sender);
 	void __fastcall PMenuEditClick(TObject *Sender);
+	void __fastcall RestartTimerTimer(TObject *Sender);
 
 private:	// User declarations
 	void __fastcall RestartSelectedServer(bool shutdown);

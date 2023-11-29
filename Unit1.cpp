@@ -163,9 +163,12 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 			return;
 		}
 
-		// запуск таймера
+		// запуск таймеров
 		Timer->Enabled = true;
 		started = true;
+		if (RestartCheck->Checked) {
+			RestartTimer->Enabled = true;
+		}
 		StartButton->Caption = "Остановить мониторинг";
 		logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
 		fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Мониторинг запущен.\n").c_str());
@@ -183,8 +186,9 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 		HideCheck->Enabled = true;
 		AddButton->Enabled = true;
 
-		// остановка таймера
+		// остановка таймеров
 		Timer->Enabled = false;
+		RestartTimer->Enabled = false;
 		started = false;
 		StartButton->Caption = "Начать мониторинг";
 		logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName)+"log.txt").c_str(), "a+");
@@ -296,33 +300,6 @@ void __fastcall TMainForm::TimerTimer(TObject *Sender)
 			monitoringThread->Start();
 		}
 	}
-
-	// ежедневная перезагрузка сервера
-	/*if (RestartCheck->Checked) {
-		CurDate = FormatDateTime("dd.mm.yyyy", Now());
-		if (CurDate != LastRestart) {
-			String hr = FormatDateTime("hh", Time());
-			String mn = FormatDateTime("nn", Time());
-			if (hr == HourEdit->Text && mn == MinEdit->Text) {
-				// убиваем процесс
-				system(AnsiString("taskkill /IM " + ExtractFileName(FileEdit->Text) + " /F").c_str());
-				logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
-				fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Перезапуск сервера по расписанию...\n").c_str());
-				fclose(logFile);
-
-				// запускаем сервер
-				SetCurrentDir(ExtractFileDir(FileEdit->Text));
-				cmd = AnsiString(ExtractFileName(FileEdit->Text) + " " + CmdMemo->Text).c_str();
-				ShellExecute(NULL, L"open", exe.c_str(), args.c_str(), ExtractFileDir(exe).c_str(), SW_SHOWNORMAL);
-				LastRestart = FormatDateTime("dd.mm.yyyy", Now());
-				logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
-				fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер запущен.\n").c_str());
-				fclose(logFile);
-				Timer->Enabled = true;
-				return;
-			}
-		}
-	}*/
 }
 //---------------------------------------------------------------------------
 
@@ -535,11 +512,54 @@ void __fastcall TMainForm::RestartSelectedServer(bool shutdown) {
 	}
 }
 //---------------------------------------------------------------------------
+
 void __fastcall TMainForm::PMenuEditClick(TObject *Sender)
 {
 	ServerAddForm->EditServer = true;
 	ServerAddForm->EditServerID = Servers->Selected->Index;
 	ServerAddForm->ShowModal();
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TMainForm::RestartTimerTimer(TObject *Sender)
+{
+	// ежедневное выключение серверов
+	CurDate = FormatDateTime("dd.mm.yyyy", Now());
+	if (CurDate != LastRestart) {
+		String hr = FormatDateTime("hh", Time());
+		String mn = FormatDateTime("nn", Time());
+		if (hr == HourEdit->Text && mn == MinEdit->Text) {
+			Timer->Enabled = false;
+			RestartTimer->Enabled = false;
+			for (int i = 0; i < serversArray->Count; i++) {
+				TJSONObject *server = static_cast<TJSONObject*>(serversArray->Get(i));
+				String ip = server->GetValue("ip")->Value();
+				String port = server->GetValue("port")->Value();
+				String pass = server->GetValue("password")->Value();
+				String exe = server->GetValue("exe")->Value();
+				String args = server->GetValue("args")->Value();
+				String serverAddr = ip + ":" + port;
+
+				// мягко выключаем или убиваем процесс
+				String exeName = ExtractFileName(exe);
+				logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
+				if (IsProcessRunning(exeName.w_str())) {
+					fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Выключение сервера " + serverAddr + " по расписанию...\n").c_str());
+					if (pass != "") {
+						String result = ExecuteSSQR("rcon " + ip + " " + port + " \"_restart\" \""+ pass + "\"");
+						if (Trim(result) == "error") {
+							system(AnsiString("taskkill /IM " + exeName + " /F").c_str());
+						}
+					} else system(AnsiString("taskkill /IM " + exeName + " /F").c_str());
+				} else {
+					fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер " + serverAddr + " не работает, выключение по расписанию не требуется.\n").c_str());
+				}
+				fclose(logFile);
+			}
+			Timer->Enabled = true;
+			RestartTimer->Enabled = true;
+		}
+	}
 }
 //---------------------------------------------------------------------------
 

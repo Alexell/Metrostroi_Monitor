@@ -236,15 +236,15 @@ object MainForm: TMainForm
     Enabled = False
     Interval = 60000
     OnTimer = TimerTimer
-    Left = 112
+    Left = 40
     Top = 280
   end
   object IdAntiFreeze: TIdAntiFreeze
-    Left = 432
+    Left = 104
     Top = 280
   end
   object Tray: TTrayIcon
-    Left = 80
+    Left = 72
     Top = 280
   end
   object PopupMenu: TPopupMenu
@@ -267,5 +267,12 @@ object MainForm: TMainForm
       Caption = #1059#1076#1072#1083#1080#1090#1100
       OnClick = PMenuRemoveClick
     end
+  end
+  object RestartTimer: TTimer
+    Enabled = False
+    Interval = 60000
+    OnTimer = RestartTimerTimer
+    Left = 432
+    Top = 280
   end
 end
