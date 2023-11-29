@@ -1,4 +1,4 @@
-//---------------------------------------------------------------------------
+﻿//---------------------------------------------------------------------------
 
 #include <vcl.h>
 #pragma hdrstop
@@ -12,6 +12,10 @@ TAboutForm *AboutForm;
 __fastcall TAboutForm::TAboutForm(TComponent* Owner)
 	: TForm(Owner)
 {
+    // отключаем влияние стиля на цвет шрифта
+	AlexellLink->StyleElements = AlexellLink->StyleElements >> seFont;
+	GitHubLink->StyleElements = GitHubLink->StyleElements >> seFont;
+	MSSLink->StyleElements = MSSLink->StyleElements >> seFont;
 }
 //---------------------------------------------------------------------------
 void __fastcall TAboutForm::AlexellLinkClick(TObject *Sender)

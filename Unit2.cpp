@@ -16,6 +16,8 @@ TServerAddForm *ServerAddForm;
 __fastcall TServerAddForm::TServerAddForm(TComponent* Owner)
 	: TForm(Owner)
 {
+    // отключаем влияние стиля на цвет шрифта
+	ArgsMemo->StyleElements = ArgsMemo->StyleElements >> seFont;
 }
 //---------------------------------------------------------------------------
 

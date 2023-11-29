@@ -25,7 +25,7 @@ object ServerAddForm: TServerAddForm
   object RconNote: TLabel
     Left = 8
     Top = 272
-    Width = 288
+    Width = 265
     Height = 39
     Caption = 
       'RCON '#1087#1072#1088#1086#1083#1100' '#1091#1082#1072#1079#1099#1074#1072#1090#1100' '#1085#1077' '#1086#1073#1103#1079#1072#1090#1077#1083#1100#1085#1086'. '#1054#1085' '#1085#1091#1078#1077#1085' '#1090#1086#1083#1100#1082#1086' '#1076#1083#1103' '#1092#1091#1085#1082#1094#1080 +
@@ -71,6 +71,7 @@ object ServerAddForm: TServerAddForm
     EditLabel.Width = 153
     EditLabel.Height = 15
     EditLabel.Caption = #1055#1091#1090#1100' '#1082' .exe '#1074#1072#1096#1077#1075#1086' '#1089#1077#1088#1074#1077#1088#1072':'
+    ReadOnly = True
     TabOrder = 2
     Text = ''
   end
