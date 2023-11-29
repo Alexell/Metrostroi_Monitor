@@ -169,6 +169,7 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 		if (RestartCheck->Checked) {
 			RestartTimer->Enabled = true;
 		}
+		TimerTimer(Timer);
 		StartButton->Caption = "Остановить мониторинг";
 		logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
 		fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Мониторинг запущен.\n").c_str());
@@ -478,6 +479,8 @@ void __fastcall TMainForm::RestartSelectedServer(bool shutdown) {
 				String pass = server->GetValue("password")->Value();
 				String exe = server->GetValue("exe")->Value();
 				String args = server->GetValue("args")->Value();
+				String serverAddr = ip + ":" + port;
+
 				if (pass == "") {
 					Application->MessageBox(L"Не указан RCON пароль сервера!", Application->Title.w_str(), MB_OK | MB_ICONEXCLAMATION);
 					return;
@@ -489,7 +492,7 @@ void __fastcall TMainForm::RestartSelectedServer(bool shutdown) {
 				}
 				if (shutdown) {
 					logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
-					fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер выключен пользователем.\n").c_str());
+					fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер " + serverAddr + " выключен пользователем.\n").c_str());
 					fclose(logFile);
 				} else {
 					Sleep(3000);
@@ -498,7 +501,7 @@ void __fastcall TMainForm::RestartSelectedServer(bool shutdown) {
 						if (FileExists(exe)) {
 							ShellExecute(NULL, L"open", exe.c_str(), args.c_str(), ExtractFileDir(exe).c_str(), SW_SHOWNORMAL);
 							logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
-							fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер перезапущен пользователем.\n").c_str());
+							fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер " + serverAddr + " перезапущен пользователем.\n").c_str());
 							fclose(logFile);
 						} else Application->MessageBox(("Файл \"" + exe + "\" не найден!").w_str(), Application->Title.w_str(), MB_OK | MB_ICONERROR);
 					}
