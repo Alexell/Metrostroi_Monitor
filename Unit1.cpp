@@ -21,6 +21,8 @@ int DownCount = 0;
 bool started = false;
 String CurDate,LastRestart;
 FILE *logFile;
+TJSONArray *serversArray; // только для мониторинга
+TMonitoringThread *monitoringThread;
 //---------------------------------------------------------------------------
 __fastcall TMainForm::TMainForm(TComponent* Owner)
 	: TForm(Owner)
@@ -48,7 +50,6 @@ void __fastcall TMainForm::FormCreate(TObject *Sender)
 		MainForm->Top = Settings->ReadInteger("Position", "Top", 0);
 		MainForm->Left = Settings->ReadInteger("Position", "Left", 0);
 		delete Settings;
-		Timer->Interval = StrToInt(IntEdit->Text) * 1000;
 	}
 
 	if (MainForm->Top == 0 && MainForm->Left == 0) {
@@ -75,7 +76,8 @@ void __fastcall TMainForm::LoadServers() {
 					String ip = server->GetValue("ip")->Value();
 					String port = server->GetValue("port")->Value();
 					TListItem *item = Servers->Items->Add();
-					item->Caption = ip;
+					item->Caption = "";
+					item->SubItems->Add(ip);
 					item->SubItems->Add(port);
 				}
 				Servers->Items->EndUpdate();
@@ -103,9 +105,9 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 			Application->MessageBox(L"Сервера для мониторинга отсутствуют!", Application->Title.w_str(), MB_OK | MB_ICONERROR);
 			return;
 		}
-		if (StrToInt(IntEdit->Text) < 30) {
-			Application->MessageBox(L"Минимальный интервал мониторинга: 30 секунд", Application->Title.w_str(), MB_OK | MB_ICONEXCLAMATION);
-			IntEdit->Text = "30";
+		if (StrToInt(IntEdit->Text) < 60) {
+			Application->MessageBox(L"Минимальный интервал мониторинга: 60 секунд", Application->Title.w_str(), MB_OK | MB_ICONEXCLAMATION);
+			IntEdit->Text = "60";
 			return;
 		}
 		if (StrToInt(DownEdit->Text) < 1) {
@@ -145,6 +147,22 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 		AddButton->Enabled = false;
 		Timer->Interval = StrToInt(IntEdit->Text) * 1000;
 
+		// загрузка данных серверов
+		if (FileExists(serversFile)) {
+			TStringList *fileContent = new TStringList;
+			try {
+				fileContent->LoadFromFile(serversFile);
+				String jsonData = fileContent->Text;
+				serversArray = static_cast<TJSONArray*>(TJSONObject::ParseJSONValue(jsonData));
+			}
+			__finally {
+				delete fileContent;
+			}
+		} else {
+			Application->MessageBox(L"Отсутствует файл servers.json!", Application->Title.w_str(), MB_OK | MB_ICONERROR);
+			return;
+		}
+
 		// запуск таймера
 		Timer->Enabled = true;
 		started = true;
@@ -176,13 +194,111 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 }
 //---------------------------------------------------------------------------
 
+__fastcall TMonitoringThread::TMonitoringThread(bool CreateSuspended): TThread(CreateSuspended)
+{
+	FreeOnTerminate = true;
+}
+
+void __fastcall TMonitoringThread::Execute()
+{
+	String onl = L"\u2713";
+	String off = L"\u2715";
+	String priv = L"\U0001F512";
+	int requiredSubItems = MainForm->Servers->Columns->Count - 1;
+	for (int i = 0; i < serversArray->Count; i++) {
+		TJSONObject *server = static_cast<TJSONObject*>(serversArray->Get(i));
+		String ip = server->GetValue("ip")->Value();
+		String port = server->GetValue("port")->Value();
+		String pass = server->GetValue("password")->Value();
+		String exe = server->GetValue("exe")->Value();
+		String args = server->GetValue("args")->Value();
+		String serverAddr = ip + ":" + port;
+
+		String result = MainForm->ExecuteSSQR("query " + ip + " " + port);
+		if (Trim(result) != "error") {
+			DownCount = 0;
+			TJSONObject *jsonObject = static_cast<TJSONObject*>(TJSONObject::ParseJSONValue(result));
+			if (jsonObject != nullptr) {
+				String map = jsonObject->GetValue("map")->Value();
+				String players = jsonObject->GetValue("players")->Value();
+				String max_players = jsonObject->GetValue("max_players")->Value();
+				String is_private = jsonObject->GetValue("password")->Value();
+
+				TThread::Queue(nullptr, [this, i, map, players, max_players, is_private, priv, onl, requiredSubItems]() {
+					if (i >= 0 && i < MainForm->Servers->Items->Count) {
+						TListItem *item = MainForm->Servers->Items->Item[i];
+
+						// заполняем SubItems, если не заполнены
+						while (item->SubItems->Count < requiredSubItems) {
+							item->SubItems->Add("");
+						}
+						if (is_private == "true") item->Caption = "    " + priv;
+						else item->Caption = "    " + onl;
+						item->SubItems->Strings[2] = map;
+						item->SubItems->Strings[3] = players + "/" + max_players;
+					}
+				});
+			}
+		} else {
+			DownCount++;
+			TThread::Queue(nullptr, [this, i, off, requiredSubItems, ip, port, exe, args]() {
+				if (i >= 0 && i < MainForm->Servers->Items->Count) {
+					TListItem *item = MainForm->Servers->Items->Item[i];
+
+					// заполняем SubItems, если не заполнены
+					while (item->SubItems->Count < requiredSubItems) {
+						item->SubItems->Add("");
+					}
+
+					item->Caption = "    " + off;
+					item->SubItems->Strings[2] = "";
+					item->SubItems->Strings[3] = "";
+				}
+			});
+
+			if (DownCount == StrToInt(MainForm->DownEdit->Text)) {
+				logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
+				fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер " + serverAddr + " недоступен.\n").c_str());
+				fclose(logFile);
+
+				// убиваем процесс
+				system(AnsiString("taskkill /IM " + ExtractFileName(exe) + " /F").c_str());
+				logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
+				fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер " + serverAddr + " перезапускается...\n").c_str());
+				fclose(logFile);
+
+				// запускаем сервер
+				logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
+				if (FileExists(exe)) {
+					ShellExecute(NULL, L"open", exe.c_str(), args.c_str(), ExtractFileDir(exe).c_str(), SW_SHOWNORMAL);
+					fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер " + serverAddr + " запущен.\n").c_str());
+				} else fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Файл \"" + exe + "\" не найден!\n").c_str());
+				fclose(logFile);
+
+				DownCount = 0;
+			}
+		}
+	}
+	MainForm->Timer->Enabled = true;
+	TThread::Queue(nullptr, [this]() {
+		MainForm->UpdateInticator->Animate = false;
+	});
+}
+//---------------------------------------------------------------------------
+
 void __fastcall TMainForm::TimerTimer(TObject *Sender)
 {
-	/*char *cmd;
-	Timer->Enabled = false;
+	if (serversArray != nullptr) {
+		Timer->Enabled = false;
+		UpdateInticator->Animate = true;
+		if (monitoringThread == nullptr || monitoringThread->Finished) {
+			monitoringThread = new TMonitoringThread(true);
+			monitoringThread->Start();
+		}
+	}
 
 	// ежедневная перезагрузка сервера
-	if (RestartCheck->Checked) {
+	/*if (RestartCheck->Checked) {
 		CurDate = FormatDateTime("dd.mm.yyyy", Now());
 		if (CurDate != LastRestart) {
 			String hr = FormatDateTime("hh", Time());
@@ -197,7 +313,7 @@ void __fastcall TMainForm::TimerTimer(TObject *Sender)
 				// запускаем сервер
 				SetCurrentDir(ExtractFileDir(FileEdit->Text));
 				cmd = AnsiString(ExtractFileName(FileEdit->Text) + " " + CmdMemo->Text).c_str();
-				WinExec(cmd, SW_SHOW);
+				ShellExecute(NULL, L"open", exe.c_str(), args.c_str(), ExtractFileDir(exe).c_str(), SW_SHOWNORMAL);
 				LastRestart = FormatDateTime("dd.mm.yyyy", Now());
 				logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
 				fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер запущен.\n").c_str());
@@ -206,39 +322,7 @@ void __fastcall TMainForm::TimerTimer(TObject *Sender)
 				return;
 			}
 		}
-	}
-
-	// мониторинг доступности IP:Port
-	try {
-		IdTCPClient->Connect();
-		if (IdTCPClient->Connected()) { //если порт доступен
-			IdTCPClient->Disconnect();
-			DownCount = 0;
-		}
-	} catch(...) { // если порт недоступен
-		DownCount++;
-		if (DownCount == 3) {
-			logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
-			fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Порт " + PortEdit->Text + " недоступен.\n").c_str());
-			fclose(logFile);
-
-			// убиваем процесс
-			system(AnsiString("taskkill /IM " + ExtractFileName(FileEdit->Text) + " /F").c_str());
-			logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
-			fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер перезапускается...\n").c_str());
-			fclose(logFile);
-
-			// запускаем сервер
-			SetCurrentDir(ExtractFileDir(FileEdit->Text));
-			cmd = AnsiString(ExtractFileName(FileEdit->Text) + " " + CmdMemo->Text).c_str();
-			WinExec(cmd, SW_SHOW);
-			logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
-			fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер запущен.\n").c_str());
-			fclose(logFile);
-            DownCount = 0;
-		}
-	}
-	Timer->Enabled = true;*/
+	}*/
 }
 //---------------------------------------------------------------------------
 
@@ -287,7 +371,7 @@ void __fastcall TMainForm::AlexellLogoClick(TObject *Sender)
 void __fastcall TMainForm::ServersMouseDown(TObject *Sender, TMouseButton Button,
           TShiftState Shift, int X, int Y)
 {
-	if (Button == mbRight && Servers->Selected != nullptr) {
+	if (Button == mbRight && Servers->Selected != nullptr && !started) {
 		TPoint point = Servers->ClientToScreen(Point(X, Y));
 		PopupMenu->Popup(point.x, point.y);
 	}
@@ -434,10 +518,12 @@ void __fastcall TMainForm::RestartSelectedServer(bool shutdown) {
 					Sleep(3000);
 					String exeName = ExtractFileName(exe);
 					if (!IsProcessRunning(exeName.w_str())) {
-						ShellExecute(NULL, L"open", exe.c_str(), args.c_str(), ExtractFileDir(exe).c_str(), SW_SHOWNORMAL);
-						logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
-						fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер перезапущен пользователем.\n").c_str());
-						fclose(logFile);
+						if (FileExists(exe)) {
+							ShellExecute(NULL, L"open", exe.c_str(), args.c_str(), ExtractFileDir(exe).c_str(), SW_SHOWNORMAL);
+							logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
+							fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер перезапущен пользователем.\n").c_str());
+							fclose(logFile);
+						} else Application->MessageBox(("Файл \"" + exe + "\" не найден!").w_str(), Application->Title.w_str(), MB_OK | MB_ICONERROR);
 					}
 				}
 			}

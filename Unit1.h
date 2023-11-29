@@ -1,4 +1,4 @@
-//---------------------------------------------------------------------------
+﻿//---------------------------------------------------------------------------
 
 #ifndef Unit1H
 #define Unit1H
@@ -62,11 +62,21 @@ __published:	// IDE-managed Components
 	void __fastcall PMenuEditClick(TObject *Sender);
 
 private:	// User declarations
-	String __fastcall ExecuteSSQR(const String &command);
 	void __fastcall RestartSelectedServer(bool shutdown);
 public:		// User declarations
-    void __fastcall LoadServers();
+	void __fastcall LoadServers();
+	String __fastcall ExecuteSSQR(const String &command);
 	__fastcall TMainForm(TComponent* Owner);
+};
+
+// класс потока мониторинга
+class TMonitoringThread : public TThread
+{
+protected:
+	void __fastcall Execute();
+
+public:
+	__fastcall TMonitoringThread(bool CreateSuspended);
 };
 //---------------------------------------------------------------------------
 extern PACKAGE TMainForm *MainForm;

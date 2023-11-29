@@ -163,12 +163,28 @@ object MainForm: TMainForm
     Height = 150
     Columns = <
       item
-        AutoSize = True
-        Caption = 'IP'
+        Caption = #1057#1090#1072#1090#1091#1089
+        MaxWidth = 50
       end
       item
-        AutoSize = True
+        Caption = 'IP'
+        MaxWidth = 120
+        Width = 120
+      end
+      item
         Caption = #1055#1086#1088#1090
+        MaxWidth = 60
+        Width = 60
+      end
+      item
+        Caption = #1050#1072#1088#1090#1072
+        MaxWidth = 210
+        Width = 210
+      end
+      item
+        Caption = #1048#1075#1088#1086#1082#1080
+        MaxWidth = 60
+        Width = 60
       end>
     ReadOnly = True
     RowSelect = True
@@ -211,8 +227,8 @@ object MainForm: TMainForm
     Text = '1'
   end
   object UpdateInticator: TActivityIndicator
-    Left = 127
-    Top = 165
+    Left = 8
+    Top = 277
     IndicatorSize = aisSmall
     IndicatorType = aitRotatingSector
   end
@@ -220,19 +236,20 @@ object MainForm: TMainForm
     Enabled = False
     Interval = 60000
     OnTimer = TimerTimer
-    Left = 32
+    Left = 112
     Top = 280
   end
   object IdAntiFreeze: TIdAntiFreeze
-    Left = 64
+    Left = 432
     Top = 280
   end
   object Tray: TTrayIcon
+    Left = 80
     Top = 280
   end
   object PopupMenu: TPopupMenu
     AutoPopup = False
-    Left = 96
+    Left = 400
     Top = 280
     object PMenuEdit: TMenuItem
       Caption = #1048#1079#1084#1077#1085#1080#1090#1100
