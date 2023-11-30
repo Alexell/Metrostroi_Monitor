@@ -29,7 +29,6 @@ __published:	// IDE-managed Components
 	TEdit *HourEdit;
 	TEdit *MinEdit;
 	TLabel *SeparatorLabel;
-	TLabel *ActionLabel;
 	TCheckBox *AutostartCheck;
 	TCheckBox *HideCheck;
 	TButton *StartButton;

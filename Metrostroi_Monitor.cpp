@@ -16,7 +16,7 @@ int WINAPI _tWinMain(HINSTANCE, HINSTANCE, LPTSTR, int)
 	{
 		Application->Initialize();
 		Application->MainFormOnTaskBar = true;
-		TStyleManager::TrySetStyle("Aqua Light Slate");
+		TStyleManager::TrySetStyle("Lavender Classico");
 		Application->Title = "Metrostroi Monitor";
 		Application->CreateForm(__classid(TMainForm), &MainForm);
 		Application->CreateForm(__classid(TServerAddForm), &ServerAddForm);
