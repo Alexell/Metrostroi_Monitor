@@ -18,7 +18,6 @@
 TMainForm *MainForm;
 TMemIniFile* Settings;
 String serversFile = "servers.json";
-int DownCount = 0;
 bool MonitoringStarted = false;
 String CurDate,LastRestart;
 FILE *logFile;
@@ -269,6 +268,10 @@ void __fastcall TMonitoringThread::Execute()
 		String exe = server->GetValue("exe")->Value();
 		String args = server->GetValue("args")->Value();
 		String serverAddr = ip + ":" + port;
+		int DownCount = 0;
+		TJSONValue *downCountValue = server->GetValue("down_count");
+		if (downCountValue == nullptr) server->AddPair("down_count", 0);
+		else DownCount = StrToInt(downCountValue->ToString());
 
 		String result = MainForm->ExecuteSSQR("query " + ip + " " + port);
 		if (Trim(result) != "error") {
@@ -340,8 +343,12 @@ void __fastcall TMonitoringThread::Execute()
 				DownCount = 0;
 			}
 		}
+
+		// обновление DownCount в массиве
+		server->RemovePair("down_count");
+		server->AddPair("down_count", DownCount);
 	}
-	MainForm->Timer->Enabled = true;
+
 	TThread::Queue(nullptr, [this]() {
 		MainForm->UpdateInticator->Animate = false;
 	});
@@ -352,7 +359,6 @@ void __fastcall TMainForm::TimerTimer(TObject *Sender)
 {
 	if (serversArray != nullptr) {
 		if (monitoringThread == nullptr || monitoringThread->Finished) {
-			Timer->Enabled = false;
 			UpdateInticator->Animate = true;
 			monitoringThread = new TMonitoringThread(true);
 			monitoringThread->Start();
