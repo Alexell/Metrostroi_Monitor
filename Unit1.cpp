@@ -19,7 +19,7 @@ TMainForm *MainForm;
 TMemIniFile* Settings;
 String serversFile = "servers.json";
 int DownCount = 0;
-bool started = false;
+bool MonitoringStarted = false;
 String CurDate,LastRestart;
 FILE *logFile;
 TJSONArray *serversArray; // только для мониторинга
@@ -136,7 +136,7 @@ void __fastcall TMainForm::FormShow(TObject *Sender)
 
 void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 {
-	if (started == false) {
+	if (MonitoringStarted == false) {
 		if (Servers->Items->Count == 0) {
 			Application->MessageBox(L"Сервера для мониторинга отсутствуют!", Application->Title.w_str(), MB_OK | MB_ICONERROR);
 			return;
@@ -209,7 +209,7 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 
 		// запуск таймеров
 		Timer->Enabled = true;
-		started = true;
+		MonitoringStarted = true;
 		if (RestartCheck->Checked) {
 			RestartTimer->Enabled = true;
 		}
@@ -238,7 +238,7 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 		// остановка таймеров
 		Timer->Enabled = false;
 		RestartTimer->Enabled = false;
-		started = false;
+		MonitoringStarted = false;
 		StartButton->Caption = "Начать мониторинг";
 		if (LogCheck->Checked) {
 			logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName)+"log.txt").c_str(), "a+");
@@ -330,7 +330,7 @@ void __fastcall TMonitoringThread::Execute()
 				// запускаем сервер
 				if (MainForm->LogCheck->Checked) logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
 				if (FileExists(exe)) {
-					ShellExecute(NULL, L"open", exe.c_str(), args.c_str(), ExtractFileDir(exe).c_str(), SW_SHOWNORMAL);
+					ShellExecute(NULL, L"open", exe.c_str(), args.c_str(), NULL, SW_SHOWNORMAL);
 					if (logFile != nullptr) fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер " + serverAddr + " запущен.\n").c_str());
 				} else {
 					if (logFile != nullptr) fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Файл \"" + exe + "\" не найден!\n").c_str());
@@ -376,7 +376,7 @@ void __fastcall TMainForm::RestartCheckClick(TObject *Sender)
 
 void __fastcall TMainForm::FormClose(TObject *Sender, TCloseAction &Action)
 {
-	if (started == true && LogCheck->Checked) {
+	if (MonitoringStarted == true && LogCheck->Checked) {
 		logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
 		fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Мониторинг прерван.\n").c_str());
 		fclose(logFile);
@@ -388,6 +388,12 @@ void __fastcall TMainForm::FormClose(TObject *Sender, TCloseAction &Action)
 	Settings->WriteInteger("Position", "Left", MainForm->Left);
 	Settings->UpdateFile();
 	delete Settings;
+
+	// удаление serversArray
+	if (serversArray != nullptr) {
+		delete serversArray;
+		serversArray = nullptr;
+	}
 }
 //---------------------------------------------------------------------------
 
@@ -406,7 +412,7 @@ void __fastcall TMainForm::AlexellLogoClick(TObject *Sender)
 void __fastcall TMainForm::ServersMouseDown(TObject *Sender, TMouseButton Button,
           TShiftState Shift, int X, int Y)
 {
-	if (Button == mbRight && Servers->Selected != nullptr && !started) {
+	if (Button == mbRight && Servers->Selected != nullptr && !MonitoringStarted) {
 		TPoint point = Servers->ClientToScreen(Point(X, Y));
 		PopupMenu->Popup(point.x, point.y);
 	}
@@ -558,7 +564,7 @@ void __fastcall TMainForm::RestartSelectedServer(bool shutdown) {
 					String exeName = ExtractFileName(exe);
 					if (!IsProcessRunning(exeName.w_str())) {
 						if (FileExists(exe)) {
-							ShellExecute(NULL, L"open", exe.c_str(), args.c_str(), ExtractFileDir(exe).c_str(), SW_SHOWNORMAL);
+							ShellExecute(NULL, L"open", exe.c_str(), args.c_str(), NULL, SW_SHOWNORMAL);
 							if (LogCheck->Checked) {
 								logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
 								fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер " + serverAddr + " перезапущен пользователем.\n").c_str());

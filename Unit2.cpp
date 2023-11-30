@@ -102,14 +102,51 @@ void __fastcall TServerAddForm::SaveButtonClick(TObject *Sender)
 				serverData->AddPair("exe", FileEdit->Text);
 				serverData->AddPair("args", ArgsMemo->Text);
 
-				if (EditServer && EditServerID >= 0 && EditServerID < jsonArray->Count)
-					jsonArray->Remove(EditServerID); // удаляем существующий элемент
+				if (EditServer && EditServerID >= 0 && EditServerID < jsonArray->Count) {
+					TJSONArray *newArray = new TJSONArray();
+					for (int i = 0; i < jsonArray->Count; i++) {
+						if (i == EditServerID) newArray->Add(serverData);
+						else {
+							TJSONObject *originalServer = static_cast<TJSONObject*>(jsonArray->Get(i));
+							newArray->Add(originalServer);
+						}
+					}
+					fileContent->Text = newArray->ToString();
+					fileContent->SaveToFile(serversFile);
 
-				jsonArray->Add(serverData);
+				} else {
+					// предотвращение дублирования
+					String newAddr = IPEdit->Text + ":" + PortEdit->Text;
+					String newExe = FileEdit->Text;
+					String newExeName = ExtractFileName(newExe);
+					for (int i = 0; i < jsonArray->Count; i++) {
+						TJSONObject *originalServer = static_cast<TJSONObject*>(jsonArray->Get(i));
+						String ip = originalServer->GetValue("ip")->Value();
+						String port = originalServer->GetValue("port")->Value();
+						String pass = originalServer->GetValue("password")->Value();
+						String exe = originalServer->GetValue("exe")->Value();
+						String args = originalServer->GetValue("args")->Value();
+						String serverAddr = ip + ":" + port;
+						String exeName = ExtractFileName(exe);
 
-				fileContent->Text = jsonArray->ToString();
-				fileContent->SaveToFile(serversFile);
+						if (newAddr == serverAddr) {
+							Application->MessageBox(("Сервер " + newAddr + " уже есть в списке!").w_str(), Application->Title.w_str(), MB_OK | MB_ICONERROR);
+							return;
+						}
+						if (newExe == exe) {
+							Application->MessageBox(("Исполняемый файл " + newExe + " уже есть в списке!").w_str(), Application->Title.w_str(), MB_OK | MB_ICONERROR);
+							return;
+						}
+						if (newExeName == exeName) {
+							Application->MessageBox(("Исполняемый файл " + newExeName + " уже есть в списке!\nВ каждом сервере, который вы добавляете в мониторинг должны быть разные имена исполняемых файлов, например srcds1.exe, srcds2.exe и т.п.\n\nПожалуйста переименуйте их, после чего добавляйте в мониторинг.").w_str(), Application->Title.w_str(), MB_OK | MB_ICONERROR);
+							return;
+						}
+					}
 
+					jsonArray->Add(serverData);
+					fileContent->Text = jsonArray->ToString();
+					fileContent->SaveToFile(serversFile);
+				}
 				delete jsonArray;
 			}
 		}
@@ -125,6 +162,34 @@ void __fastcall TServerAddForm::SaveButtonClick(TObject *Sender)
 		serverData->AddPair("password", PassEdit->Text);
 		serverData->AddPair("exe", FileEdit->Text);
 		serverData->AddPair("args", ArgsMemo->Text);
+
+		// предотвращение дублирования
+		String newAddr = IPEdit->Text + ":" + PortEdit->Text;
+		String newExe = FileEdit->Text;
+		String newExeName = ExtractFileName(newExe);
+		for (int i = 0; i < jsonArray->Count; i++) {
+			TJSONObject *originalServer = static_cast<TJSONObject*>(jsonArray->Get(i));
+			String ip = originalServer->GetValue("ip")->Value();
+			String port = originalServer->GetValue("port")->Value();
+			String pass = originalServer->GetValue("password")->Value();
+			String exe = originalServer->GetValue("exe")->Value();
+			String args = originalServer->GetValue("args")->Value();
+			String serverAddr = ip + ":" + port;
+			String exeName = ExtractFileName(exe);
+
+			if (newAddr == serverAddr) {
+				Application->MessageBox(("Сервер " + newAddr + " уже есть в списке!").w_str(), Application->Title.w_str(), MB_OK | MB_ICONERROR);
+				return;
+			}
+			if (newExe == exe) {
+				Application->MessageBox(("Исполняемый файл " + newExe + " уже есть в списке!").w_str(), Application->Title.w_str(), MB_OK | MB_ICONERROR);
+				return;
+			}
+			if (newExeName == exeName) {
+				Application->MessageBox(("Исполняемый файл " + newExeName + " уже есть в списке!\nВ каждом сервере, который вы добавляете в мониторинг должны быть разные имена исполняемых файлов, например srcds1.exe, srcds2.exe и т.п.\n\nПожалуйста переименуйте их, после чего добавляйте в мониторинг.").w_str(), Application->Title.w_str(), MB_OK | MB_ICONERROR);
+				return;
+			}
+		}
 
 		jsonArray->Add(serverData);
 

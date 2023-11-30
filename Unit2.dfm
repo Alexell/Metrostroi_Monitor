@@ -133,6 +133,7 @@ object ServerAddForm: TServerAddForm
   object OpenDialog: TOpenDialog
     FileName = 'srcds.exe'
     Filter = #1048#1089#1087#1086#1083#1085#1103#1077#1084#1099#1077' '#1092#1072#1081#1083#1099'|*.exe'
+    Options = [ofHideReadOnly, ofNoChangeDir, ofFileMustExist, ofEnableSizing]
     Title = #1042#1099#1073#1077#1088#1080#1090#1077' '#1080#1089#1087#1086#1083#1085#1103#1077#1084#1099#1081' '#1092#1072#1081#1083' '#1089#1077#1088#1074#1077#1088#1072
     Left = 248
     Top = 8
