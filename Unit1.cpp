@@ -20,7 +20,6 @@ TMemIniFile* Settings;
 String serversFile = "servers.json";
 bool MonitoringStarted = false;
 String CurDate,LastRestart;
-FILE *logFile;
 TJSONArray *serversArray; // только для мониторинга
 TMonitoringThread *monitoringThread;
 //---------------------------------------------------------------------------
@@ -133,6 +132,19 @@ void __fastcall TMainForm::FormShow(TObject *Sender)
 }
 //---------------------------------------------------------------------------
 
+void LogEntry(String text) {
+	if (MainForm->LogCheck->Checked) {
+		FILE *logFile;
+		AnsiString logFilePath = ExtractFilePath(Application->ExeName) + "log.txt";
+		logFile = fopen(logFilePath.c_str(), "a+");
+		if (logFile != nullptr) {
+			fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | " + text + "\n").c_str());
+			fclose(logFile);
+		}
+	}
+}
+//---------------------------------------------------------------------------
+
 void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 {
 	if (MonitoringStarted == false) {
@@ -214,11 +226,7 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 		}
 		TimerTimer(Timer);
 		StartButton->Caption = "Остановить мониторинг";
-		if (LogCheck->Checked) {
-			logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
-			fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Мониторинг запущен.\n").c_str());
-			fclose(logFile);
-		}
+		LogEntry("Мониторинг запущен.");
 	} else {
 		// разблокировка элементов формы
 		IntEdit->Enabled = true;
@@ -239,11 +247,7 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 		RestartTimer->Enabled = false;
 		MonitoringStarted = false;
 		StartButton->Caption = "Начать мониторинг";
-		if (LogCheck->Checked) {
-			logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName)+"log.txt").c_str(), "a+");
-			fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Мониторинг остановлен.\n").c_str());
-			fclose(logFile);
-		}
+		LogEntry("Мониторинг остановлен.");
 
 		for (int i = 0; i < Servers->Items->Count; i++) {
 			TListItem *item = Servers->Items->Item[i];
@@ -321,30 +325,18 @@ void __fastcall TMonitoringThread::Execute()
 				}
 			});
 
-			if (MainForm->LogCheck->Checked) {
-				logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
-				fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер " + serverAddr + " недоступен. Потытка " + DownCount + "/" + MainForm->DownEdit->Text + ".\n").c_str());
-				fclose(logFile);
-			}
+			LogEntry("Сервер " + serverAddr + " недоступен. Потытка " + DownCount + "/" + MainForm->DownEdit->Text + ".");
 
 			if (DownCount == StrToInt(MainForm->DownEdit->Text)) {
 				// убиваем процесс
 				system(AnsiString("taskkill /IM " + ExtractFileName(exe) + " /F").c_str());
-				if (MainForm->LogCheck->Checked) {
-					logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
-					fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер " + serverAddr + " перезапускается...\n").c_str());
-					fclose(logFile);
-				}
+				LogEntry("Сервер " + serverAddr + " перезапускается...");
 
 				// запускаем сервер
-				if (MainForm->LogCheck->Checked) logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
 				if (FileExists(exe)) {
 					ShellExecute(NULL, L"open", exe.c_str(), args.c_str(), NULL, SW_SHOWNORMAL);
-					if (logFile != nullptr) fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер " + serverAddr + " запущен.\n").c_str());
-				} else {
-					if (logFile != nullptr) fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Файл \"" + exe + "\" не найден!\n").c_str());
-				}
-				if (logFile != nullptr) fclose(logFile);
+					LogEntry("Сервер " + serverAddr + " запущен.");
+				} else LogEntry("Файл \"" + exe + "\" не найден!");
 
 				DownCount = 0;
 			}
@@ -388,11 +380,7 @@ void __fastcall TMainForm::RestartCheckClick(TObject *Sender)
 
 void __fastcall TMainForm::FormClose(TObject *Sender, TCloseAction &Action)
 {
-	if (MonitoringStarted == true && LogCheck->Checked) {
-		logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
-		fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Мониторинг прерван.\n").c_str());
-		fclose(logFile);
-	}
+	if (MonitoringStarted == true) LogEntry("Мониторинг прерван.");
 
 	// сохранение позиции формы в ini
 	Settings = new TMemIniFile(ExtractFilePath(Application->ExeName) + "settings.ini", TEncoding::UTF8);
@@ -565,26 +553,16 @@ void __fastcall TMainForm::RestartSelectedServer(bool shutdown) {
 					Application->MessageBox(L"Не удалось выполнить RCON команду!", Application->Title.w_str(), MB_OK | MB_ICONERROR);
 					return;
 				}
-				if (shutdown) {
-					if (LogCheck->Checked) {
-						logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
-						fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер " + serverAddr + " выключен пользователем.\n").c_str());
-						fclose(logFile);
-					}
-				} else {
+				if (!shutdown) {
 					Sleep(3000);
 					String exeName = ExtractFileName(exe);
 					if (!IsProcessRunning(exeName.w_str())) {
 						if (FileExists(exe)) {
 							ShellExecute(NULL, L"open", exe.c_str(), args.c_str(), NULL, SW_SHOWNORMAL);
-							if (LogCheck->Checked) {
-								logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
-								fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер " + serverAddr + " перезапущен пользователем.\n").c_str());
-								fclose(logFile);
-							}
+							LogEntry("Сервер " + serverAddr + " перезапущен пользователем.");
 						} else Application->MessageBox(("Файл \"" + exe + "\" не найден!").w_str(), Application->Title.w_str(), MB_OK | MB_ICONERROR);
 					}
-				}
+				} else LogEntry("Сервер " + serverAddr + " выключен пользователем.");
 			}
 		}
 		delete jsonArray;
@@ -622,21 +600,19 @@ void __fastcall TMainForm::RestartTimerTimer(TObject *Sender)
 				String args = server->GetValue("args")->Value();
 				String serverAddr = ip + ":" + port;
 
-				// мягко выключаем или убиваем процесс
+				
 				String exeName = ExtractFileName(exe);
-				if (LogCheck->Checked) logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
 				if (IsProcessRunning(exeName.w_str())) {
-					if (logFile != nullptr) fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Выключение сервера " + serverAddr + " по расписанию...\n").c_str());
+					LogEntry("Перезапуск сервера " + serverAddr + " по расписанию...");
+					
+					// мягко выключаем или убиваем процесс
 					if (pass != "") {
 						String result = ExecuteSSQR("rcon " + ip + " " + port + " \"_restart\" \""+ pass + "\"");
 						if (Trim(result) == "error") {
 							system(AnsiString("taskkill /IM " + exeName + " /F").c_str());
 						}
 					} else system(AnsiString("taskkill /IM " + exeName + " /F").c_str());
-				} else {
-					if (logFile != nullptr) fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер " + serverAddr + " не работает, выключение по расписанию не требуется.\n").c_str());
-				}
-				if (logFile != nullptr) fclose(logFile);
+				} else LogEntry("Сервер " + serverAddr + " не работает, перезапуск по расписанию не требуется.");
 			}
 			Timer->Enabled = true;
 			RestartTimer->Enabled = true;
