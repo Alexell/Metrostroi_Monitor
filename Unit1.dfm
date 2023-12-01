@@ -124,6 +124,7 @@ object MainForm: TMainForm
     Top = 229
     Width = 185
     Height = 17
+    Hint = #1055#1088#1080' '#1079#1072#1087#1091#1089#1082#1077' '#1087#1088#1086#1075#1088#1072#1084#1084#1099' '#1089#1088#1072#1079#1091' '#1085#1072#1095#1080#1085#1072#1090#1100' '#1084#1086#1085#1080#1090#1086#1088#1080#1085#1075
     Caption = #1057#1088#1072#1079#1091' '#1085#1072#1095#1080#1085#1072#1090#1100' '#1084#1086#1085#1080#1090#1086#1088#1080#1085#1075
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clWindowText
@@ -131,6 +132,8 @@ object MainForm: TMainForm
     Font.Name = 'Segoe UI'
     Font.Style = [fsBold]
     ParentFont = False
+    ParentShowHint = False
+    ShowHint = True
     TabOrder = 4
   end
   object HideCheck: TCheckBox
@@ -138,6 +141,7 @@ object MainForm: TMainForm
     Top = 252
     Width = 185
     Height = 17
+    Hint = #1055#1088#1080' '#1079#1072#1087#1091#1089#1082#1077' '#1087#1088#1086#1075#1088#1072#1084#1084#1099' '#1072#1074#1090#1086#1084#1072#1090#1080#1095#1077#1089#1082#1080' '#1089#1074#1086#1088#1072#1095#1080#1074#1072#1090#1100' '#1086#1082#1085#1086
     Caption = #1040#1074#1090#1086#1084#1072#1090#1080#1095#1077#1089#1082#1080' '#1089#1074#1086#1088#1072#1095#1080#1074#1072#1090#1100
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clWindowText
@@ -145,6 +149,8 @@ object MainForm: TMainForm
     Font.Name = 'Segoe UI'
     Font.Style = [fsBold]
     ParentFont = False
+    ParentShowHint = False
+    ShowHint = True
     TabOrder = 5
   end
   object StartButton: TButton

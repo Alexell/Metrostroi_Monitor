@@ -245,6 +245,12 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 			fclose(logFile);
 		}
 
+		for (int i = 0; i < Servers->Items->Count; i++) {
+			TListItem *item = Servers->Items->Item[i];
+			item->Caption = "";
+			item->SubItems->Strings[2] = "";
+			item->SubItems->Strings[3] = "";
+		}
 	}
 }
 //---------------------------------------------------------------------------
@@ -315,13 +321,13 @@ void __fastcall TMonitoringThread::Execute()
 				}
 			});
 
-			if (DownCount == StrToInt(MainForm->DownEdit->Text)) {
-				if (MainForm->LogCheck->Checked) {
-					logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
-					fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер " + serverAddr + " недоступен.\n").c_str());
-					fclose(logFile);
-				}
+			if (MainForm->LogCheck->Checked) {
+				logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
+				fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер " + serverAddr + " недоступен. Потытка " + DownCount + "/" + MainForm->DownEdit->Text + ".\n").c_str());
+				fclose(logFile);
+			}
 
+			if (DownCount == StrToInt(MainForm->DownEdit->Text)) {
 				// убиваем процесс
 				system(AnsiString("taskkill /IM " + ExtractFileName(exe) + " /F").c_str());
 				if (MainForm->LogCheck->Checked) {
