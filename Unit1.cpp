@@ -22,6 +22,7 @@ bool MonitoringStarted = false;
 String CurDate,LastRestart;
 TJSONArray *serversArray; // только для мониторинга
 TMonitoringThread *monitoringThread;
+TRestartThread *restartThread;
 //---------------------------------------------------------------------------
 __fastcall TMainForm::TMainForm(TComponent* Owner)
 	: TForm(Owner)
@@ -581,41 +582,60 @@ void __fastcall TMainForm::PMenuEditClick(TObject *Sender)
 }
 //---------------------------------------------------------------------------
 
+__fastcall TRestartThread::TRestartThread(bool CreateSuspended): TThread(CreateSuspended)
+{
+	FreeOnTerminate = true;
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TRestartThread::Execute() {
+	// ежедневное выключение серверов
+	MainForm->Timer->Enabled = false;
+	MainForm->RestartTimer->Enabled = false;
+	for (int i = 0; i < serversArray->Count; i++) {
+		TJSONObject *server = static_cast<TJSONObject*>(serversArray->Get(i));
+		String ip = server->GetValue("ip")->Value();
+		String port = server->GetValue("port")->Value();
+		String pass = server->GetValue("password")->Value();
+		String exe = server->GetValue("exe")->Value();
+		String args = server->GetValue("args")->Value();
+		String serverAddr = ip + ":" + port;
+		String exeName = ExtractFileName(exe);
+
+		if (IsProcessRunning(exeName.w_str())) {
+			LogEntry("Перезапуск сервера " + serverAddr + " по расписанию...");
+
+		   // мягко выключаем или убиваем процесс
+			if (pass != "") {
+				String result = MainForm->ExecuteSSQR("rcon " + ip + " " + port + " \"_restart\" \""+ pass + "\"");
+				if (Trim(result) == "error") {
+					system(AnsiString("taskkill /IM " + exeName + " /F").c_str());
+				}
+			} else system(AnsiString("taskkill /IM " + exeName + " /F").c_str());
+
+			// запускаем сервер
+			if (FileExists(exe)) {
+				ShellExecute(NULL, L"open", exe.c_str(), args.c_str(), NULL, SW_SHOWNORMAL);
+				Sleep(30000);
+				LogEntry("Сервер " + serverAddr + " запущен.");
+			} else LogEntry("Файл \"" + exe + "\" не найден!");
+		} else LogEntry("Сервер " + serverAddr + " не работает, перезапуск по расписанию не требуется.");
+	}
+	MainForm->Timer->Enabled = true;
+	MainForm->RestartTimer->Enabled = true;
+}
+//---------------------------------------------------------------------------
+
 void __fastcall TMainForm::RestartTimerTimer(TObject *Sender)
 {
-	// ежедневное выключение серверов
-	CurDate = FormatDateTime("dd.mm.yyyy", Now());
-	if (CurDate != LastRestart) {
-		String hr = FormatDateTime("hh", Time());
-		String mn = FormatDateTime("nn", Time());
-		if (hr == HourEdit->Text && mn == MinEdit->Text) {
-			Timer->Enabled = false;
-			RestartTimer->Enabled = false;
-			for (int i = 0; i < serversArray->Count; i++) {
-				TJSONObject *server = static_cast<TJSONObject*>(serversArray->Get(i));
-				String ip = server->GetValue("ip")->Value();
-				String port = server->GetValue("port")->Value();
-				String pass = server->GetValue("password")->Value();
-				String exe = server->GetValue("exe")->Value();
-				String args = server->GetValue("args")->Value();
-				String serverAddr = ip + ":" + port;
-
-				
-				String exeName = ExtractFileName(exe);
-				if (IsProcessRunning(exeName.w_str())) {
-					LogEntry("Перезапуск сервера " + serverAddr + " по расписанию...");
-					
-					// мягко выключаем или убиваем процесс
-					if (pass != "") {
-						String result = ExecuteSSQR("rcon " + ip + " " + port + " \"_restart\" \""+ pass + "\"");
-						if (Trim(result) == "error") {
-							system(AnsiString("taskkill /IM " + exeName + " /F").c_str());
-						}
-					} else system(AnsiString("taskkill /IM " + exeName + " /F").c_str());
-				} else LogEntry("Сервер " + serverAddr + " не работает, перезапуск по расписанию не требуется.");
+	String hr = FormatDateTime("hh", Time());
+	String mn = FormatDateTime("nn", Time());
+	if (hr == HourEdit->Text && mn == MinEdit->Text) {
+		if (serversArray != nullptr) {
+			if (restartThread == nullptr || restartThread->Finished) {
+				restartThread = new TRestartThread(true);
+				restartThread->Start();
 			}
-			Timer->Enabled = true;
-			RestartTimer->Enabled = true;
 		}
 	}
 }

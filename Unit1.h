@@ -81,6 +81,16 @@ protected:
 public:
 	__fastcall TMonitoringThread(bool CreateSuspended);
 };
+
+// класс потока рестарта
+class TRestartThread : public TThread
+{
+protected:
+	void __fastcall Execute();
+
+public:
+	__fastcall TRestartThread(bool CreateSuspended);
+};
 //---------------------------------------------------------------------------
 extern PACKAGE TMainForm *MainForm;
 //---------------------------------------------------------------------------
