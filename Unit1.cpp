@@ -286,7 +286,10 @@ void __fastcall TMonitoringThread::Execute()
 
 		String result = MainForm->ExecuteSSQR("query " + ip + " " + port);
 		if (Trim(result) != "error") {
-			DownCount = 0;
+			if (DownCount > 0) {
+				DownCount = 0;
+				LogEntry("Сервер " + serverAddr + " снова доступен.");
+			}
 			TJSONObject *jsonObject = static_cast<TJSONObject*>(TJSONObject::ParseJSONValue(result));
 			if (jsonObject != nullptr) {
 				String map = jsonObject->GetValue("map")->Value();
@@ -413,7 +416,7 @@ void __fastcall TMainForm::AlexellLogoClick(TObject *Sender)
 void __fastcall TMainForm::ServersMouseDown(TObject *Sender, TMouseButton Button,
           TShiftState Shift, int X, int Y)
 {
-	if (Button == mbRight && Servers->Selected != nullptr && !MonitoringStarted) {
+	if (Button == mbRight && Servers->Selected != nullptr) {
 		TPoint point = Servers->ClientToScreen(Point(X, Y));
 		PopupMenu->Popup(point.x, point.y);
 	}
@@ -550,8 +553,13 @@ void __fastcall TMainForm::RestartSelectedServer(bool shutdown) {
 					return;
 				}
 				String result = ExecuteSSQR("rcon " + ip + " " + port + " \"_restart\" \""+ pass + "\"");
-				if (Trim(result) == "error") {
+				result = Trim(result);
+				if (result == "error") {
 					Application->MessageBox(L"Не удалось выполнить RCON команду!", Application->Title.w_str(), MB_OK | MB_ICONERROR);
+					return;
+				}
+				if (Pos("error_password", result) > 0) {
+					Application->MessageBox(L"Неверный RCON пароль или RCON выключен на сервере!", Application->Title.w_str(), MB_OK | MB_ICONERROR);
 					return;
 				}
 				if (!shutdown) {
@@ -637,6 +645,18 @@ void __fastcall TMainForm::RestartTimerTimer(TObject *Sender)
 				restartThread->Start();
 			}
 		}
+	}
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TMainForm::PopupMenuPopup(TObject *Sender)
+{
+	if (MonitoringStarted) {
+		PMenuEdit->Enabled = false;
+		PMenuRemove->Enabled = false;
+	} else {
+		PMenuEdit->Enabled = true;
+		PMenuRemove->Enabled = true;
 	}
 }
 //---------------------------------------------------------------------------

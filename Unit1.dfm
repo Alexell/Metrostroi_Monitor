@@ -289,6 +289,7 @@ object MainForm: TMainForm
   end
   object PopupMenu: TPopupMenu
     AutoPopup = False
+    OnPopup = PopupMenuPopup
     Left = 392
     Top = 320
     object PMenuEdit: TMenuItem

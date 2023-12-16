@@ -63,6 +63,7 @@ __published:	// IDE-managed Components
 	void __fastcall PMenuShutdownClick(TObject *Sender);
 	void __fastcall PMenuEditClick(TObject *Sender);
 	void __fastcall RestartTimerTimer(TObject *Sender);
+	void __fastcall PopupMenuPopup(TObject *Sender);
 
 private:	// User declarations
 	void __fastcall RestartSelectedServer(bool shutdown);
