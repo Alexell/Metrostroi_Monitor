@@ -25,6 +25,9 @@
 *.a
 *.lib
 
+# Go modules check sum
+go.sum
+
 # Executables
 *.exe
 *.out
