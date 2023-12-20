@@ -300,7 +300,8 @@ void __fastcall TMonitoringThread::Execute()
 			   // мягко выключаем или убиваем процесс
 				if (pass != "") {
 					String result = MainForm->ExecuteSSQR("rcon " + ip + " " + port + " \"_restart\" \""+ pass + "\"");
-					if (Trim(result) == "error") {
+					result = Trim(result);
+					if (result == "error" || Pos("error_password", result) > 0) {
 						system(AnsiString("taskkill /IM " + exeName + " /F").c_str());
 					}
 				} else system(AnsiString("taskkill /IM " + exeName + " /F").c_str());
