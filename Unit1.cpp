@@ -19,10 +19,9 @@ TMainForm *MainForm;
 TMemIniFile* Settings;
 String serversFile = "servers.json";
 bool MonitoringStarted = false;
+bool MonitoringPaused = false;
 String CurDate,LastRestart;
 TJSONArray *serversArray; // только для мониторинга
-TMonitoringThread *monitoringThread;
-TRestartThread *restartThread;
 //---------------------------------------------------------------------------
 __fastcall TMainForm::TMainForm(TComponent* Owner)
 	: TForm(Owner)
@@ -43,7 +42,6 @@ void __fastcall TMainForm::FormCreate(TObject *Sender)
 		RestartCheck->Checked = Settings->ReadBool("Options", "RestartDaily", 0);
 		HourEdit->Text = Settings->ReadString("Options", "RestartHour", "04");
 		MinEdit->Text = Settings->ReadString("Options", "RestartMinute", "00");
-		IntEdit->Text = Settings->ReadString("Options", "Interval", 60);
 		DownEdit->Text = Settings->ReadString("Options", "DownCount", 1);
 		AutostartCheck->Checked = Settings->ReadBool("Options", "AutoStartMon", 0);
 		HideCheck->Checked = Settings->ReadBool("Options", "Minimized", 0);
@@ -153,11 +151,6 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 			Application->MessageBox(L"Сервера для мониторинга отсутствуют!", Application->Title.w_str(), MB_OK | MB_ICONERROR);
 			return;
 		}
-		if (StrToInt(IntEdit->Text) < 60) {
-			Application->MessageBox(L"Минимальный интервал мониторинга: 60 секунд", Application->Title.w_str(), MB_OK | MB_ICONEXCLAMATION);
-			IntEdit->Text = "60";
-			return;
-		}
 		if (StrToInt(DownEdit->Text) < 1) {
 			Application->MessageBox(L"Минимальное число неудачных попыток: 1", Application->Title.w_str(), MB_OK | MB_ICONEXCLAMATION);
 			DownEdit->Text = "1";
@@ -177,7 +170,6 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 		Settings->WriteBool("Options", "RestartDaily", RestartCheck->Checked);
 		Settings->WriteString("Options", "RestartHour", HourEdit->Text);
 		Settings->WriteString("Options", "RestartMinute", MinEdit->Text);
-		Settings->WriteString("Options", "Interval", IntEdit->Text);
 		Settings->WriteString("Options", "DownCount", DownEdit->Text);
 		Settings->WriteBool("Options", "AutoStartMon", AutostartCheck->Checked);
 		Settings->WriteBool("Options", "Minimized", HideCheck->Checked);
@@ -191,7 +183,6 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 		else RemoveFromStartup();
 
 		// блокировка элементов формы
-		IntEdit->Enabled = false;
 		DownEdit->Enabled = false;
 		RestartCheck->Enabled = false;
 		HourEdit->Enabled = false;
@@ -201,7 +192,6 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 		AddButton->Enabled = false;
 		AutorunCheck->Enabled = false;
 		LogCheck->Enabled = false;
-		Timer->Interval = StrToInt(IntEdit->Text) * 1000;
 
 		// загрузка данных серверов
 		if (FileExists(serversFile)) {
@@ -219,18 +209,14 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 			return;
 		}
 
-		// запуск таймеров
+		// запуск таймера
 		Timer->Enabled = true;
 		MonitoringStarted = true;
-		if (RestartCheck->Checked) {
-			RestartTimer->Enabled = true;
-		}
 		TimerTimer(Timer);
 		StartButton->Caption = "Остановить мониторинг";
 		LogEntry("Мониторинг запущен.");
 	} else {
 		// разблокировка элементов формы
-		IntEdit->Enabled = true;
 		DownEdit->Enabled = true;
 		RestartCheck->Enabled = true;
 		if (RestartCheck->Checked) {
@@ -243,9 +229,8 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 		AutorunCheck->Enabled = true;
 		LogCheck->Enabled = true;
 
-		// остановка таймеров
+		// остановка таймера
 		Timer->Enabled = false;
-		RestartTimer->Enabled = false;
 		MonitoringStarted = false;
 		StartButton->Caption = "Начать мониторинг";
 		LogEntry("Мониторинг остановлен.");
@@ -260,6 +245,31 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 }
 //---------------------------------------------------------------------------
 
+bool IsProcessRunning(const wchar_t *processName)
+{
+	bool exists = false;
+	HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+
+	if (hSnapshot != INVALID_HANDLE_VALUE) {
+		PROCESSENTRY32 pe;
+		pe.dwSize = sizeof(PROCESSENTRY32);
+
+		if (Process32First(hSnapshot, &pe)) {
+			do {
+				if (wcscmp(pe.szExeFile, processName) == 0) {
+					exists = true;
+					break;
+				}
+			} while (Process32Next(hSnapshot, &pe));
+		}
+
+		CloseHandle(hSnapshot);
+	}
+
+	return exists;
+}
+//---------------------------------------------------------------------------
+
 __fastcall TMonitoringThread::TMonitoringThread(bool CreateSuspended): TThread(CreateSuspended)
 {
 	FreeOnTerminate = true;
@@ -267,37 +277,92 @@ __fastcall TMonitoringThread::TMonitoringThread(bool CreateSuspended): TThread(C
 
 void __fastcall TMonitoringThread::Execute()
 {
-	String onl = L"\u2713";
-	String off = L"\u2715";
-	String priv = L"\U0001F512";
-	int requiredSubItems = MainForm->Servers->Columns->Count - 1;
-	for (int i = 0; i < serversArray->Count; i++) {
-		TJSONObject *server = static_cast<TJSONObject*>(serversArray->Get(i));
-		String ip = server->GetValue("ip")->Value();
-		String port = server->GetValue("port")->Value();
-		String pass = server->GetValue("password")->Value();
-		String exe = server->GetValue("exe")->Value();
-		String args = server->GetValue("args")->Value();
-		String serverAddr = ip + ":" + port;
-		int DownCount = 0;
-		TJSONValue *downCountValue = server->GetValue("down_count");
-		if (downCountValue == nullptr) server->AddPair("down_count", 0);
-		else DownCount = StrToInt(downCountValue->ToString());
+	TThread::Queue(nullptr, [this]() {
+		MainForm->UpdateInticator->Animate = true;
+	});
+	String hour = FormatDateTime("hh", Time());
+	String min = FormatDateTime("nn", Time());
+	if (MainForm->RestartCheck->Checked && hour == MainForm->HourEdit->Text && min == MainForm->MinEdit->Text) { // ежедневная перезагрузка серверов
+		MonitoringPaused = true;
+		for (int i = 0; i < serversArray->Count; i++) {
+			TJSONObject *server = static_cast<TJSONObject*>(serversArray->Get(i));
+			String ip = server->GetValue("ip")->Value();
+			String port = server->GetValue("port")->Value();
+			String pass = server->GetValue("password")->Value();
+			String exe = server->GetValue("exe")->Value();
+			String args = server->GetValue("args")->Value();
+			String serverAddr = ip + ":" + port;
+			String exeName = ExtractFileName(exe);
 
-		String result = MainForm->ExecuteSSQR("query " + ip + " " + port);
-		if (Trim(result) != "error") {
-			if (DownCount > 0) {
-				DownCount = 0;
-				LogEntry("Сервер " + serverAddr + " снова доступен.");
-			}
-			TJSONObject *jsonObject = static_cast<TJSONObject*>(TJSONObject::ParseJSONValue(result));
-			if (jsonObject != nullptr) {
-				String map = jsonObject->GetValue("map")->Value();
-				String players = jsonObject->GetValue("players")->Value();
-				String max_players = jsonObject->GetValue("max_players")->Value();
-				String is_private = jsonObject->GetValue("password")->Value();
+			if (IsProcessRunning(exeName.w_str())) {
+				LogEntry("Перезапуск сервера " + serverAddr + " по расписанию...");
 
-				TThread::Queue(nullptr, [this, i, map, players, max_players, is_private, priv, onl, requiredSubItems]() {
+			   // мягко выключаем или убиваем процесс
+				if (pass != "") {
+					String result = MainForm->ExecuteSSQR("rcon " + ip + " " + port + " \"_restart\" \""+ pass + "\"");
+					if (Trim(result) == "error") {
+						system(AnsiString("taskkill /IM " + exeName + " /F").c_str());
+					}
+				} else system(AnsiString("taskkill /IM " + exeName + " /F").c_str());
+
+				// запускаем сервер
+				if (FileExists(exe)) {
+					ShellExecute(NULL, L"open", exe.c_str(), args.c_str(), NULL, SW_SHOWNORMAL);
+					Sleep(30000);
+					LogEntry("Сервер " + serverAddr + " запущен.");
+				} else LogEntry("Файл \"" + exe + "\" не найден!");
+			} else LogEntry("Сервер " + serverAddr + " не работает, перезапуск по расписанию не требуется.");
+		}
+		MonitoringPaused = false;
+	} else { // мониторинг
+		String onl = L"\u2713";
+		String off = L"\u2715";
+		String priv = L"\U0001F512";
+		int requiredSubItems = MainForm->Servers->Columns->Count - 1;
+		for (int i = 0; i < serversArray->Count; i++) {
+			TJSONObject *server = static_cast<TJSONObject*>(serversArray->Get(i));
+			String ip = server->GetValue("ip")->Value();
+			String port = server->GetValue("port")->Value();
+			String pass = server->GetValue("password")->Value();
+			String exe = server->GetValue("exe")->Value();
+			String args = server->GetValue("args")->Value();
+			String serverAddr = ip + ":" + port;
+			int DownCount = 0;
+			TJSONValue *downCountValue = server->GetValue("down_count");
+			if (downCountValue == nullptr) server->AddPair("down_count", 0);
+			else DownCount = StrToInt(downCountValue->ToString());
+
+			String result = MainForm->ExecuteSSQR("query " + ip + " " + port);
+			if (Trim(result) != "error") {
+				if (DownCount > 0) {
+					DownCount = 0;
+					LogEntry("Сервер " + serverAddr + " снова доступен.");
+				}
+				TJSONObject *jsonObject = static_cast<TJSONObject*>(TJSONObject::ParseJSONValue(result));
+				if (jsonObject != nullptr) {
+					String map = jsonObject->GetValue("map")->Value();
+					String players = jsonObject->GetValue("players")->Value();
+					String max_players = jsonObject->GetValue("max_players")->Value();
+					String is_private = jsonObject->GetValue("password")->Value();
+
+					TThread::Queue(nullptr, [this, i, map, players, max_players, is_private, priv, onl, requiredSubItems]() {
+						if (i >= 0 && i < MainForm->Servers->Items->Count) {
+							TListItem *item = MainForm->Servers->Items->Item[i];
+
+							// заполняем SubItems, если не заполнены
+							while (item->SubItems->Count < requiredSubItems) {
+								item->SubItems->Add("");
+							}
+							if (is_private == "true") item->Caption = "    " + priv;
+							else item->Caption = "    " + onl;
+							item->SubItems->Strings[2] = map;
+							item->SubItems->Strings[3] = players + "/" + max_players;
+						}
+					});
+				}
+			} else {
+				DownCount++;
+				TThread::Queue(nullptr, [this, i, off, requiredSubItems, ip, port, exe, args]() {
 					if (i >= 0 && i < MainForm->Servers->Items->Count) {
 						TListItem *item = MainForm->Servers->Items->Item[i];
 
@@ -305,52 +370,35 @@ void __fastcall TMonitoringThread::Execute()
 						while (item->SubItems->Count < requiredSubItems) {
 							item->SubItems->Add("");
 						}
-						if (is_private == "true") item->Caption = "    " + priv;
-						else item->Caption = "    " + onl;
-						item->SubItems->Strings[2] = map;
-						item->SubItems->Strings[3] = players + "/" + max_players;
+
+						item->Caption = "    " + off;
+						item->SubItems->Strings[2] = "";
+						item->SubItems->Strings[3] = "";
 					}
 				});
-			}
-		} else {
-			DownCount++;
-			TThread::Queue(nullptr, [this, i, off, requiredSubItems, ip, port, exe, args]() {
-				if (i >= 0 && i < MainForm->Servers->Items->Count) {
-					TListItem *item = MainForm->Servers->Items->Item[i];
 
-					// заполняем SubItems, если не заполнены
-					while (item->SubItems->Count < requiredSubItems) {
-						item->SubItems->Add("");
-					}
+				LogEntry("Сервер " + serverAddr + " недоступен. Потытка " + DownCount + "/" + MainForm->DownEdit->Text + ".");
 
-					item->Caption = "    " + off;
-					item->SubItems->Strings[2] = "";
-					item->SubItems->Strings[3] = "";
+				if (DownCount == StrToInt(MainForm->DownEdit->Text)) {
+					// убиваем процесс
+					system(AnsiString("taskkill /IM " + ExtractFileName(exe) + " /F").c_str());
+					LogEntry("Сервер " + serverAddr + " перезапускается...");
+
+					// запускаем сервер
+					if (FileExists(exe)) {
+						ShellExecute(NULL, L"open", exe.c_str(), args.c_str(), NULL, SW_SHOWNORMAL);
+						LogEntry("Сервер " + serverAddr + " запущен.");
+					} else LogEntry("Файл \"" + exe + "\" не найден!");
+
+					DownCount = 0;
 				}
-			});
-
-			LogEntry("Сервер " + serverAddr + " недоступен. Потытка " + DownCount + "/" + MainForm->DownEdit->Text + ".");
-
-			if (DownCount == StrToInt(MainForm->DownEdit->Text)) {
-				// убиваем процесс
-				system(AnsiString("taskkill /IM " + ExtractFileName(exe) + " /F").c_str());
-				LogEntry("Сервер " + serverAddr + " перезапускается...");
-
-				// запускаем сервер
-				if (FileExists(exe)) {
-					ShellExecute(NULL, L"open", exe.c_str(), args.c_str(), NULL, SW_SHOWNORMAL);
-					LogEntry("Сервер " + serverAddr + " запущен.");
-				} else LogEntry("Файл \"" + exe + "\" не найден!");
-
-				DownCount = 0;
 			}
+
+			// обновление DownCount в массиве
+			server->RemovePair("down_count");
+			server->AddPair("down_count", DownCount);
 		}
-
-		// обновление DownCount в массиве
-		server->RemovePair("down_count");
-		server->AddPair("down_count", DownCount);
 	}
-
 	TThread::Queue(nullptr, [this]() {
 		MainForm->UpdateInticator->Animate = false;
 	});
@@ -359,12 +407,8 @@ void __fastcall TMonitoringThread::Execute()
 
 void __fastcall TMainForm::TimerTimer(TObject *Sender)
 {
-	if (serversArray != nullptr) {
-		if (monitoringThread == nullptr || monitoringThread->Finished) {
-			UpdateInticator->Animate = true;
-			monitoringThread = new TMonitoringThread(true);
-			monitoringThread->Start();
-		}
+	if (serversArray != nullptr && !MonitoringPaused) {
+		(new TMonitoringThread(true))->Start();
 	}
 }
 //---------------------------------------------------------------------------
@@ -420,31 +464,6 @@ void __fastcall TMainForm::ServersMouseDown(TObject *Sender, TMouseButton Button
 		TPoint point = Servers->ClientToScreen(Point(X, Y));
 		PopupMenu->Popup(point.x, point.y);
 	}
-}
-//---------------------------------------------------------------------------
-
-bool IsProcessRunning(const wchar_t *processName)
-{
-    bool exists = false;
-    HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-
-    if (hSnapshot != INVALID_HANDLE_VALUE) {
-        PROCESSENTRY32 pe;
-        pe.dwSize = sizeof(PROCESSENTRY32);
-
-        if (Process32First(hSnapshot, &pe)) {
-            do {
-                if (wcscmp(pe.szExeFile, processName) == 0) {
-                    exists = true;
-                    break;
-				}
-			} while (Process32Next(hSnapshot, &pe));
-		}
-
-		CloseHandle(hSnapshot);
-	}
-
-	return exists;
 }
 //---------------------------------------------------------------------------
 
@@ -587,65 +606,6 @@ void __fastcall TMainForm::PMenuEditClick(TObject *Sender)
 	ServerAddForm->EditServer = true;
 	ServerAddForm->EditServerID = Servers->Selected->Index;
 	ServerAddForm->ShowModal();
-}
-//---------------------------------------------------------------------------
-
-__fastcall TRestartThread::TRestartThread(bool CreateSuspended): TThread(CreateSuspended)
-{
-	FreeOnTerminate = true;
-}
-//---------------------------------------------------------------------------
-
-void __fastcall TRestartThread::Execute() {
-	// ежедневное выключение серверов
-	MainForm->Timer->Enabled = false;
-	MainForm->RestartTimer->Enabled = false;
-	for (int i = 0; i < serversArray->Count; i++) {
-		TJSONObject *server = static_cast<TJSONObject*>(serversArray->Get(i));
-		String ip = server->GetValue("ip")->Value();
-		String port = server->GetValue("port")->Value();
-		String pass = server->GetValue("password")->Value();
-		String exe = server->GetValue("exe")->Value();
-		String args = server->GetValue("args")->Value();
-		String serverAddr = ip + ":" + port;
-		String exeName = ExtractFileName(exe);
-
-		if (IsProcessRunning(exeName.w_str())) {
-			LogEntry("Перезапуск сервера " + serverAddr + " по расписанию...");
-
-		   // мягко выключаем или убиваем процесс
-			if (pass != "") {
-				String result = MainForm->ExecuteSSQR("rcon " + ip + " " + port + " \"_restart\" \""+ pass + "\"");
-				if (Trim(result) == "error") {
-					system(AnsiString("taskkill /IM " + exeName + " /F").c_str());
-				}
-			} else system(AnsiString("taskkill /IM " + exeName + " /F").c_str());
-
-			// запускаем сервер
-			if (FileExists(exe)) {
-				ShellExecute(NULL, L"open", exe.c_str(), args.c_str(), NULL, SW_SHOWNORMAL);
-				Sleep(30000);
-				LogEntry("Сервер " + serverAddr + " запущен.");
-			} else LogEntry("Файл \"" + exe + "\" не найден!");
-		} else LogEntry("Сервер " + serverAddr + " не работает, перезапуск по расписанию не требуется.");
-	}
-	MainForm->Timer->Enabled = true;
-	MainForm->RestartTimer->Enabled = true;
-}
-//---------------------------------------------------------------------------
-
-void __fastcall TMainForm::RestartTimerTimer(TObject *Sender)
-{
-	String hr = FormatDateTime("hh", Time());
-	String mn = FormatDateTime("nn", Time());
-	if (hr == HourEdit->Text && mn == MinEdit->Text) {
-		if (serversArray != nullptr) {
-			if (restartThread == nullptr || restartThread->Finished) {
-				restartThread = new TRestartThread(true);
-				restartThread->Start();
-			}
-		}
-	}
 }
 //---------------------------------------------------------------------------
 

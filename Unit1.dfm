@@ -4,7 +4,7 @@ object MainForm: TMainForm
   BorderIcons = [biSystemMenu, biMinimize]
   BorderStyle = bsSingle
   Caption = 'MainForm'
-  ClientHeight = 352
+  ClientHeight = 316
   ClientWidth = 524
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -18,7 +18,7 @@ object MainForm: TMainForm
   TextHeight = 15
   object SeparatorLabel: TLabel
     Left = 492
-    Top = 208
+    Top = 203
     Width = 3
     Height = 15
     Caption = ':'
@@ -31,7 +31,7 @@ object MainForm: TMainForm
   end
   object AlexellLogo: TImage
     Left = 476
-    Top = 304
+    Top = 268
     Width = 40
     Height = 40
     Cursor = crHandPoint
@@ -66,29 +66,9 @@ object MainForm: TMainForm
       10A0F4F20FA59AA8A28D2E2FD20000000049454E44AE426082}
     OnClick = AlexellLogoClick
   end
-  object IntEdit: TLabeledEdit
-    Left = 470
-    Top = 234
-    Width = 46
-    Height = 23
-    EditLabel.Width = 207
-    EditLabel.Height = 23
-    EditLabel.Caption = #1048#1085#1090#1077#1088#1074#1072#1083' '#1087#1088#1086#1074#1077#1088#1082#1080' '#1089#1077#1088#1074#1077#1088#1086#1074' ('#1089#1077#1082'):'
-    EditLabel.Font.Charset = DEFAULT_CHARSET
-    EditLabel.Font.Color = clWindowText
-    EditLabel.Font.Height = -12
-    EditLabel.Font.Name = 'Segoe UI'
-    EditLabel.Font.Style = [fsBold]
-    EditLabel.ParentFont = False
-    LabelPosition = lpLeft
-    LabelSpacing = 13
-    NumbersOnly = True
-    TabOrder = 0
-    Text = '60'
-  end
   object RestartCheck: TCheckBox
     Left = 230
-    Top = 206
+    Top = 203
     Width = 234
     Height = 17
     Caption = #1055#1077#1088#1077#1079#1072#1087#1091#1089#1082#1072#1090#1100' '#1089#1077#1088#1074#1077#1088#1072' '#1077#1078#1077#1076#1085#1077#1074#1085#1086' '#1074
@@ -98,30 +78,30 @@ object MainForm: TMainForm
     Font.Name = 'Segoe UI'
     Font.Style = [fsBold]
     ParentFont = False
-    TabOrder = 1
+    TabOrder = 0
     OnClick = RestartCheckClick
   end
   object HourEdit: TEdit
-    Left = 470
-    Top = 205
+    Left = 471
+    Top = 201
+    Width = 18
+    Height = 23
+    NumbersOnly = True
+    TabOrder = 1
+    Text = '00'
+  end
+  object MinEdit: TEdit
+    Left = 498
+    Top = 201
     Width = 18
     Height = 23
     NumbersOnly = True
     TabOrder = 2
     Text = '00'
   end
-  object MinEdit: TEdit
-    Left = 498
-    Top = 205
-    Width = 18
-    Height = 23
-    NumbersOnly = True
-    TabOrder = 3
-    Text = '00'
-  end
   object AutostartCheck: TCheckBox
     Left = 8
-    Top = 229
+    Top = 227
     Width = 185
     Height = 17
     Hint = #1055#1088#1080' '#1079#1072#1087#1091#1089#1082#1077' '#1087#1088#1086#1075#1088#1072#1084#1084#1099' '#1089#1088#1072#1079#1091' '#1085#1072#1095#1080#1085#1072#1090#1100' '#1084#1086#1085#1080#1090#1086#1088#1080#1085#1075
@@ -134,11 +114,11 @@ object MainForm: TMainForm
     ParentFont = False
     ParentShowHint = False
     ShowHint = True
-    TabOrder = 4
+    TabOrder = 3
   end
   object HideCheck: TCheckBox
     Left = 8
-    Top = 252
+    Top = 251
     Width = 185
     Height = 17
     Hint = #1055#1088#1080' '#1079#1072#1087#1091#1089#1082#1077' '#1087#1088#1086#1075#1088#1072#1084#1084#1099' '#1072#1074#1090#1086#1084#1072#1090#1080#1095#1077#1089#1082#1080' '#1089#1074#1086#1088#1072#1095#1080#1074#1072#1090#1100' '#1086#1082#1085#1086
@@ -151,15 +131,15 @@ object MainForm: TMainForm
     ParentFont = False
     ParentShowHint = False
     ShowHint = True
-    TabOrder = 5
+    TabOrder = 4
   end
   object StartButton: TButton
     Left = 135
-    Top = 316
+    Top = 283
     Width = 250
     Height = 25
     Caption = #1053#1072#1095#1072#1090#1100' '#1084#1086#1085#1080#1090#1086#1088#1080#1085#1075
-    TabOrder = 6
+    TabOrder = 5
     OnClick = StartButtonClick
   end
   object Servers: TListView
@@ -194,7 +174,7 @@ object MainForm: TMainForm
       end>
     ReadOnly = True
     RowSelect = True
-    TabOrder = 7
+    TabOrder = 6
     ViewStyle = vsReport
     OnMouseDown = ServersMouseDown
   end
@@ -204,13 +184,13 @@ object MainForm: TMainForm
     Width = 113
     Height = 25
     Caption = #1044#1086#1073#1072#1074#1080#1090#1100' '#1089#1077#1088#1074#1077#1088
-    TabOrder = 8
+    TabOrder = 7
     OnClick = AddButtonClick
   end
   object DownEdit: TLabeledEdit
-    Left = 470
-    Top = 263
-    Width = 46
+    Left = 471
+    Top = 225
+    Width = 45
     Height = 23
     EditLabel.Width = 163
     EditLabel.Height = 23
@@ -227,20 +207,20 @@ object MainForm: TMainForm
     EditLabel.ParentShowHint = False
     EditLabel.ShowHint = True
     LabelPosition = lpLeft
-    LabelSpacing = 56
+    LabelSpacing = 59
     NumbersOnly = True
-    TabOrder = 9
+    TabOrder = 8
     Text = '1'
   end
   object UpdateInticator: TActivityIndicator
     Left = 8
-    Top = 320
+    Top = 284
     IndicatorSize = aisSmall
     IndicatorType = aitRotatingSector
   end
   object AutorunCheck: TCheckBox
     Left = 8
-    Top = 206
+    Top = 203
     Width = 97
     Height = 17
     Hint = #1047#1072#1087#1091#1089#1082#1072#1090#1100' '#1087#1088#1086#1075#1088#1072#1084#1084#1091' '#1074#1084#1077#1089#1090#1077' '#1089' Windows'
@@ -253,11 +233,11 @@ object MainForm: TMainForm
     ParentFont = False
     ParentShowHint = False
     ShowHint = True
-    TabOrder = 11
+    TabOrder = 10
   end
   object LogCheck: TCheckBox
-    Left = 8
-    Top = 275
+    Left = 230
+    Top = 251
     Width = 106
     Height = 17
     Hint = #1047#1072#1087#1080#1089#1100' '#1074#1089#1077#1093' '#1089#1086#1073#1099#1090#1080#1081' '#1074' log.txt'
@@ -270,28 +250,28 @@ object MainForm: TMainForm
     ParentFont = False
     ParentShowHint = False
     ShowHint = True
-    TabOrder = 12
+    TabOrder = 11
   end
   object Timer: TTimer
     Enabled = False
     Interval = 60000
     OnTimer = TimerTimer
-    Left = 40
-    Top = 320
+    Left = 64
+    Top = 280
   end
   object IdAntiFreeze: TIdAntiFreeze
-    Left = 104
-    Top = 320
+    Left = 424
+    Top = 280
   end
   object Tray: TTrayIcon
-    Left = 72
-    Top = 320
+    Left = 96
+    Top = 280
   end
   object PopupMenu: TPopupMenu
     AutoPopup = False
     OnPopup = PopupMenuPopup
     Left = 392
-    Top = 320
+    Top = 280
     object PMenuEdit: TMenuItem
       Caption = #1048#1079#1084#1077#1085#1080#1090#1100
       OnClick = PMenuEditClick
@@ -308,12 +288,5 @@ object MainForm: TMainForm
       Caption = #1059#1076#1072#1083#1080#1090#1100
       OnClick = PMenuRemoveClick
     end
-  end
-  object RestartTimer: TTimer
-    Enabled = False
-    Interval = 60000
-    OnTimer = RestartTimerTimer
-    Left = 424
-    Top = 320
   end
 end

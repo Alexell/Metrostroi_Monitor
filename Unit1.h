@@ -24,7 +24,6 @@
 class TMainForm : public TForm
 {
 __published:	// IDE-managed Components
-	TLabeledEdit *IntEdit;
 	TCheckBox *RestartCheck;
 	TEdit *HourEdit;
 	TEdit *MinEdit;
@@ -45,7 +44,6 @@ __published:	// IDE-managed Components
 	TMenuItem *PMenuRemove;
 	TMenuItem *PMenuShutdown;
 	TMenuItem *PMenuEdit;
-	TTimer *RestartTimer;
 	TCheckBox *AutorunCheck;
 	TCheckBox *LogCheck;
 	void __fastcall FormShow(TObject *Sender);
@@ -62,7 +60,6 @@ __published:	// IDE-managed Components
 	void __fastcall PMenuRestartClick(TObject *Sender);
 	void __fastcall PMenuShutdownClick(TObject *Sender);
 	void __fastcall PMenuEditClick(TObject *Sender);
-	void __fastcall RestartTimerTimer(TObject *Sender);
 	void __fastcall PopupMenuPopup(TObject *Sender);
 
 private:	// User declarations
@@ -81,16 +78,6 @@ protected:
 
 public:
 	__fastcall TMonitoringThread(bool CreateSuspended);
-};
-
-// класс потока рестарта
-class TRestartThread : public TThread
-{
-protected:
-	void __fastcall Execute();
-
-public:
-	__fastcall TRestartThread(bool CreateSuspended);
 };
 //---------------------------------------------------------------------------
 extern PACKAGE TMainForm *MainForm;
