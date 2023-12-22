@@ -26,6 +26,10 @@ TJSONArray *serversArray; // только для мониторинга
 __fastcall TMainForm::TMainForm(TComponent* Owner)
 	: TForm(Owner)
 {
+	if (!FileExists("ssqr.exe")) {
+		Application->MessageBox(L"Файл \"ssqr.exe\" не найден!\nРабота программы невозможна.", Application->Title.w_str(), MB_OK | MB_ICONERROR);
+		Application->Terminate();
+	}
 }
 //---------------------------------------------------------------------------
 
