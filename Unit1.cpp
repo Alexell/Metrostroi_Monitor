@@ -235,6 +235,7 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 		StartButton->Caption = "Начать мониторинг";
 		LogEntry("Мониторинг остановлен.");
 
+		MainForm->ProcessIndicator->Animate = false;
 		for (int i = 0; i < Servers->Items->Count; i++) {
 			TListItem *item = Servers->Items->Item[i];
 			item->Caption = "";
@@ -277,13 +278,13 @@ __fastcall TMonitoringThread::TMonitoringThread(bool CreateSuspended): TThread(C
 
 void __fastcall TMonitoringThread::Execute()
 {
+	MonitoringPaused = true;
 	TThread::Queue(nullptr, [this]() {
-		MainForm->UpdateInticator->Animate = true;
+		MainForm->ProcessIndicator->Animate = true;
 	});
 	String hour = FormatDateTime("hh", Time());
 	String min = FormatDateTime("nn", Time());
 	if (MainForm->RestartCheck->Checked && hour == MainForm->HourEdit->Text && min == MainForm->MinEdit->Text) { // ежедневная перезагрузка серверов
-		MonitoringPaused = true;
 		for (int i = 0; i < serversArray->Count; i++) {
 			TJSONObject *server = static_cast<TJSONObject*>(serversArray->Get(i));
 			String ip = server->GetValue("ip")->Value();
@@ -314,7 +315,6 @@ void __fastcall TMonitoringThread::Execute()
 				} else LogEntry("Файл \"" + exe + "\" не найден!");
 			} else LogEntry("Сервер " + serverAddr + " не работает, перезапуск по расписанию не требуется.");
 		}
-		MonitoringPaused = false;
 	} else { // мониторинг
 		String onl = L"\u2713";
 		String off = L"\u2715";
@@ -388,6 +388,7 @@ void __fastcall TMonitoringThread::Execute()
 					// запускаем сервер
 					if (FileExists(exe)) {
 						ShellExecute(NULL, L"open", exe.c_str(), args.c_str(), NULL, SW_SHOWNORMAL);
+						Sleep(30000);
 						LogEntry("Сервер " + serverAddr + " запущен.");
 					} else LogEntry("Файл \"" + exe + "\" не найден!");
 
@@ -401,8 +402,9 @@ void __fastcall TMonitoringThread::Execute()
 		}
 	}
 	TThread::Queue(nullptr, [this]() {
-		MainForm->UpdateInticator->Animate = false;
+		MainForm->ProcessIndicator->Animate = false;
 	});
+	MonitoringPaused = false;
 }
 //---------------------------------------------------------------------------
 

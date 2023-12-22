@@ -37,7 +37,7 @@ __published:	// IDE-managed Components
 	TListView *Servers;
 	TButton *AddButton;
 	TLabeledEdit *DownEdit;
-	TActivityIndicator *UpdateInticator;
+	TActivityIndicator *ProcessIndicator;
 	TImage *AlexellLogo;
 	TPopupMenu *PopupMenu;
 	TMenuItem *PMenuRestart;
