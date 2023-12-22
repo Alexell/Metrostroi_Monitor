@@ -243,8 +243,10 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 		for (int i = 0; i < Servers->Items->Count; i++) {
 			TListItem *item = Servers->Items->Item[i];
 			item->Caption = "";
-			item->SubItems->Strings[2] = "";
-			item->SubItems->Strings[3] = "";
+			if (item->SubItems->Count > 2) {
+				item->SubItems->Strings[2] = "";
+				item->SubItems->Strings[3] = "";
+			}
 		}
 	}
 }
