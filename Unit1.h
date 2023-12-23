@@ -1,4 +1,4 @@
-//---------------------------------------------------------------------------
+﻿//---------------------------------------------------------------------------
 
 #ifndef Unit1H
 #define Unit1H
@@ -16,42 +16,68 @@
 #include <IdTCPClient.hpp>
 #include <IdTCPConnection.hpp>
 #include <Vcl.Dialogs.hpp>
+#include <Vcl.ComCtrls.hpp>
+#include <Vcl.WinXCtrls.hpp>
+#include <Vcl.Imaging.pngimage.hpp>
+#include <Vcl.Menus.hpp>
 //---------------------------------------------------------------------------
 class TMainForm : public TForm
 {
 __published:	// IDE-managed Components
-	TLabeledEdit *IPEdit;
-	TLabeledEdit *PortEdit;
-	TLabeledEdit *IntEdit;
-	TLabeledEdit *FileEdit;
-	TButton *FileButton;
-	TLabel *CmdLabel;
-	TMemo *CmdMemo;
 	TCheckBox *RestartCheck;
 	TEdit *HourEdit;
 	TEdit *MinEdit;
 	TLabel *SeparatorLabel;
-	TLabel *ActionLabel;
 	TCheckBox *AutostartCheck;
 	TCheckBox *HideCheck;
 	TButton *StartButton;
-	TLabel *AboutLabel;
-	TOpenDialog *OpenDialog;
-	TIdTCPClient *IdTCPClient;
 	TTimer *Timer;
 	TIdAntiFreeze *IdAntiFreeze;
 	TTrayIcon *Tray;
+	TListView *Servers;
+	TButton *AddButton;
+	TLabeledEdit *DownEdit;
+	TActivityIndicator *ProcessIndicator;
+	TImage *AlexellLogo;
+	TPopupMenu *PopupMenu;
+	TMenuItem *PMenuRestart;
+	TMenuItem *PMenuRemove;
+	TMenuItem *PMenuShutdown;
+	TMenuItem *PMenuEdit;
+	TCheckBox *AutorunCheck;
+	TCheckBox *LogCheck;
 	void __fastcall FormShow(TObject *Sender);
-	void __fastcall FileButtonClick(TObject *Sender);
 	void __fastcall StartButtonClick(TObject *Sender);
 	void __fastcall TimerTimer(TObject *Sender);
-	void __fastcall CmdMemoClick(TObject *Sender);
-	void __fastcall IPEditKeyPress(TObject *Sender, System::WideChar &Key);
 	void __fastcall RestartCheckClick(TObject *Sender);
 	void __fastcall FormClose(TObject *Sender, TCloseAction &Action);
+	void __fastcall AddButtonClick(TObject *Sender);
+	void __fastcall FormCreate(TObject *Sender);
+	void __fastcall AlexellLogoClick(TObject *Sender);
+	void __fastcall ServersMouseDown(TObject *Sender, TMouseButton Button, TShiftState Shift,
+          int X, int Y);
+	void __fastcall PMenuRemoveClick(TObject *Sender);
+	void __fastcall PMenuRestartClick(TObject *Sender);
+	void __fastcall PMenuShutdownClick(TObject *Sender);
+	void __fastcall PMenuEditClick(TObject *Sender);
+	void __fastcall PopupMenuPopup(TObject *Sender);
+
 private:	// User declarations
+	void __fastcall RestartSelectedServer(bool shutdown);
 public:		// User declarations
+	void __fastcall LoadServers();
+	String __fastcall ExecuteSSQR(const String &command);
 	__fastcall TMainForm(TComponent* Owner);
+};
+
+// класс потока мониторинга
+class TMonitoringThread : public TThread
+{
+protected:
+	void __fastcall Execute();
+
+public:
+	__fastcall TMonitoringThread(bool CreateSuspended);
 };
 //---------------------------------------------------------------------------
 extern PACKAGE TMainForm *MainForm;

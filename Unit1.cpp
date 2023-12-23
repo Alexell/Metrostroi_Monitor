@@ -3,133 +3,225 @@
 #include <vcl.h>
 #pragma hdrstop
 
-#include "IniFiles.hpp"
 #include "Unit1.h"
+#include "Unit2.h"
+#include "Unit3.h"
+#include <windows.h>
+#include <TlHelp32.h>
+#include <IniFiles.hpp>
+#include <Registry.hpp>
+#include <System.JSON.hpp>
+#include <System.StrUtils.hpp>
 //---------------------------------------------------------------------------
 #pragma package(smart_init)
 #pragma resource "*.dfm"
 TMainForm *MainForm;
 TMemIniFile* Settings;
-int pid;
-int DownCount = 0;
-bool started = false;
+String serversFile = "servers.json";
+bool MonitoringStarted = false;
+bool MonitoringPaused = false;
 String CurDate,LastRestart;
-FILE *logFile;
+TJSONArray *serversArray; // только для мониторинга
 //---------------------------------------------------------------------------
 __fastcall TMainForm::TMainForm(TComponent* Owner)
 	: TForm(Owner)
 {
-	MainForm->Caption=Application->Title;
-
-    //Загружаем настройки из INI файла
-	if (FileExists(ExtractFilePath(Application->ExeName)+"settings.ini"))
-	{
-		Settings = new TMemIniFile(ExtractFilePath(Application->ExeName) + "settings.ini", TEncoding::UTF8);
-		IPEdit->Text = Settings->ReadString("Server", "IP", "");
-		PortEdit->Text = Settings->ReadString("Server", "Port", "27015");
-		FileEdit->Text = Settings->ReadString("Server", "Exe", "");
-		CmdMemo->Text = Settings->ReadString("Server", "Cmd", "");
-		RestartCheck->Checked = Settings->ReadBool("Options", "RestartDaily", 0);
-		HourEdit->Text = Settings->ReadString("Options", "RestartHour", "04");
-		MinEdit->Text = Settings->ReadString("Options", "RestartMinute", "00");
-		IntEdit->Text = Settings->ReadString("Options", "Interval", "");
-		AutostartCheck->Checked = Settings->ReadBool("Options", "Autostart", 0);
-		HideCheck->Checked = Settings->ReadBool("Options", "Minimized", 0);
-		delete Settings;
-		Timer->Interval = StrToInt(IntEdit->Text) * 1000;
+	if (!FileExists("ssqr.exe")) {
+		Application->MessageBox(L"Файл \"ssqr.exe\" не найден!\nРабота программы невозможна.", Application->Title.w_str(), MB_OK | MB_ICONERROR);
+		Application->Terminate();
 	}
 }
 //---------------------------------------------------------------------------
 
+void __fastcall TMainForm::FormCreate(TObject *Sender)
+{
+	MainForm->Top = 0;
+	MainForm->Left = 0;
+	MainForm->Caption=Application->Title;
+
+	// загружаем настройки из ini
+	if (FileExists(ExtractFilePath(Application->ExeName)+"settings.ini"))
+	{
+		Settings = new TMemIniFile(ExtractFilePath(Application->ExeName) + "settings.ini", TEncoding::UTF8);
+		RestartCheck->Checked = Settings->ReadBool("Options", "RestartDaily", 0);
+		HourEdit->Text = Settings->ReadString("Options", "RestartHour", "04");
+		MinEdit->Text = Settings->ReadString("Options", "RestartMinute", "00");
+		DownEdit->Text = Settings->ReadString("Options", "DownCount", 1);
+		AutostartCheck->Checked = Settings->ReadBool("Options", "AutoStartMon", 0);
+		HideCheck->Checked = Settings->ReadBool("Options", "Minimized", 0);
+		LogCheck->Checked = Settings->ReadBool("Options", "Logging", 0);
+		AutorunCheck->Checked = Settings->ReadBool("Options", "AutoRun", 0);
+		MainForm->Top = Settings->ReadInteger("Position", "Top", 0);
+		MainForm->Left = Settings->ReadInteger("Position", "Left", 0);
+		delete Settings;
+	}
+
+	if (MainForm->Top == 0 && MainForm->Left == 0) {
+        MainForm->Position = poScreenCenter;
+	}
+
+	// загружаем список серверов
+    LoadServers();
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TMainForm::LoadServers() {
+	Servers->Items->Clear();
+	if (FileExists(serversFile)) {
+		TStringList *fileContent = new TStringList;
+		try {
+			fileContent->LoadFromFile(serversFile);
+			String jsonData = fileContent->Text;
+			TJSONArray *jsonArray = static_cast<TJSONArray*>(TJSONObject::ParseJSONValue(jsonData));
+			if (jsonArray != nullptr) {
+				Servers->Items->BeginUpdate();
+				for (int i = 0; i < jsonArray->Count; i++) {
+					TJSONObject *server = static_cast<TJSONObject*>(jsonArray->Get(i));
+					String ip = server->GetValue("ip")->Value();
+					String port = server->GetValue("port")->Value();
+					TListItem *item = Servers->Items->Add();
+					item->Caption = "";
+					item->SubItems->Add(ip);
+					item->SubItems->Add(port);
+				}
+				Servers->Items->EndUpdate();
+			}
+			delete jsonArray;
+		}
+		__finally {
+			delete fileContent;
+		}
+	}
+}
+//---------------------------------------------------------------------------
+
+void AddToStartup() {
+	AnsiString appName = Application->Title;
+	AnsiString appPath = Application->ExeName;
+	std::unique_ptr<TRegistry> reg(new TRegistry());
+	reg->RootKey = HKEY_CURRENT_USER;
+	try {
+		if (reg->OpenKey("\\Software\\Microsoft\\Windows\\CurrentVersion\\Run", true)) {
+			if (!reg->ValueExists(appName)) reg->WriteString(appName, appPath);
+			reg->CloseKey();
+		}
+	}
+	catch (const Exception& e) {
+		Application->MessageBox(e.Message.c_str(), Application->Title.w_str(), MB_OK | MB_ICONERROR);
+	}
+}
+//---------------------------------------------------------------------------
+
+void RemoveFromStartup() {
+	AnsiString appName = Application->Title;
+	std::unique_ptr<TRegistry> reg(new TRegistry());
+	reg->RootKey = HKEY_CURRENT_USER;
+	try {
+		if (reg->OpenKey("\\Software\\Microsoft\\Windows\\CurrentVersion\\Run", false)) {
+			if (reg->ValueExists(appName)) reg->DeleteValue(appName);
+			reg->CloseKey();
+		}
+	}
+	catch (const Exception& e) {
+		Application->MessageBox(e.Message.c_str(), Application->Title.w_str(), MB_OK | MB_ICONERROR);
+	}
+}
+//---------------------------------------------------------------------------
 
 void __fastcall TMainForm::FormShow(TObject *Sender)
 {
-	AboutLabel->Caption = "Автор: Alexell | Сайт: alexell.ru";
 	if (HideCheck->Checked) Application->Minimize();
 	if (AutostartCheck->Checked) StartButton->Click();
 }
 //---------------------------------------------------------------------------
 
-void __fastcall TMainForm::FileButtonClick(TObject *Sender)
-{
-    if (OpenDialog->Execute()) FileEdit->Text = OpenDialog->FileName;
+void LogEntry(String text) {
+	if (MainForm->LogCheck->Checked) {
+		FILE *logFile;
+		AnsiString logFilePath = ExtractFilePath(Application->ExeName) + "log.txt";
+		logFile = fopen(logFilePath.c_str(), "a+");
+		if (logFile != nullptr) {
+			fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | " + text + "\n").c_str());
+			fclose(logFile);
+		}
+	}
 }
 //---------------------------------------------------------------------------
 
-
 void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 {
-	if (started == false) {
-		//Обработка полей
-		if (IntEdit->Text == "" || FileEdit->Text == "" || CmdMemo->Text == "" || CmdMemo->Text.Pos("...")) {
-			Application->MessageBox(L"Не заполнены настройки!", Application->Title.w_str(), MB_OK | MB_ICONERROR);
+	if (MonitoringStarted == false) {
+		if (Servers->Items->Count == 0) {
+			Application->MessageBox(L"Сервера для мониторинга отсутствуют!", Application->Title.w_str(), MB_OK | MB_ICONERROR);
 			return;
 		}
-		if (StrToInt(IntEdit->Text) < 30) {
-			Application->MessageBox(L"Минимальный интервал мониторинга: 30 секунд.", Application->Title.w_str(), MB_OK | MB_ICONEXCLAMATION);
-			IntEdit->Text = "30";
-			return;
-		}
-		if (CmdMemo->Text.SubString(0, 11) == "start /wait") CmdMemo->Text = StringReplace(CmdMemo->Text," /wait","",TReplaceFlags() << rfReplaceAll);
-		if (CmdMemo->Text.SubString(0, 5) != "start") {
-			Application->MessageBox(L"Командная строка должна начинаться со \"start\"!", Application->Title.w_str(), MB_OK | MB_ICONEXCLAMATION);
+		if (StrToInt(DownEdit->Text) < 1) {
+			Application->MessageBox(L"Минимальное число неудачных попыток: 1", Application->Title.w_str(), MB_OK | MB_ICONEXCLAMATION);
+			DownEdit->Text = "1";
 			return;
 		}
 		if (RestartCheck->Checked) {
 			if (StrToInt(HourEdit->Text) > 23 || StrToInt(MinEdit->Text) > 59) {
-				Application->MessageBox(L"Неверное время перезапуска сервера.", Application->Title.w_str(), MB_OK | MB_ICONERROR);
+				Application->MessageBox(L"Неверное время перезапуска сервера!", Application->Title.w_str(), MB_OK | MB_ICONERROR);
 				HourEdit->Text = "00";
 				MinEdit->Text = "00";
 				return;
 			}
 		}
 
-		//Сохранение настроек в INI
+		// сохранение настроек в ini
 		Settings = new TMemIniFile(ExtractFilePath(Application->ExeName) + "settings.ini", TEncoding::UTF8);
-		Settings->WriteString("Server", "IP", IPEdit->Text);
-		Settings->WriteString("Server", "Port", PortEdit->Text);
-		Settings->WriteString("Server", "Exe", FileEdit->Text);
-		Settings->WriteString("Server", "Cmd", CmdMemo->Text);
 		Settings->WriteBool("Options", "RestartDaily", RestartCheck->Checked);
 		Settings->WriteString("Options", "RestartHour", HourEdit->Text);
 		Settings->WriteString("Options", "RestartMinute", MinEdit->Text);
-		Settings->WriteString("Options", "Interval", IntEdit->Text);
-		Settings->WriteBool("Options", "Autostart", AutostartCheck->Checked);
+		Settings->WriteString("Options", "DownCount", DownEdit->Text);
+		Settings->WriteBool("Options", "AutoStartMon", AutostartCheck->Checked);
 		Settings->WriteBool("Options", "Minimized", HideCheck->Checked);
+		Settings->WriteBool("Options", "Logging", LogCheck->Checked);
+		Settings->WriteBool("Options", "AutoRun", AutorunCheck->Checked);
 		Settings->UpdateFile();
 		delete Settings;
 
-		//Блокировка элементов формы
-		IPEdit->Enabled = false;
-		PortEdit->Enabled = false;
-		FileEdit->Enabled = false;
-		FileButton->Enabled = false;
-		CmdMemo->Enabled = false;
-		IntEdit->Enabled = false;
+		// автозапуск
+		if (AutorunCheck->Checked) AddToStartup();
+		else RemoveFromStartup();
+
+		// блокировка элементов формы
+		DownEdit->Enabled = false;
 		RestartCheck->Enabled = false;
 		HourEdit->Enabled = false;
 		MinEdit->Enabled = false;
 		AutostartCheck->Enabled = false;
 		HideCheck->Enabled = false;
-		Timer->Interval = StrToInt(IntEdit->Text) * 1000;
-		IdTCPClient->Host = IPEdit->Text;
-		IdTCPClient->Port = StrToInt(PortEdit->Text);
+		AddButton->Enabled = false;
+		AutorunCheck->Enabled = false;
+		LogCheck->Enabled = false;
 
-		//Запуск таймера
+		// загрузка данных серверов
+		if (FileExists(serversFile)) {
+			TStringList *fileContent = new TStringList;
+			try {
+				fileContent->LoadFromFile(serversFile);
+				String jsonData = fileContent->Text;
+				serversArray = static_cast<TJSONArray*>(TJSONObject::ParseJSONValue(jsonData));
+			}
+			__finally {
+				delete fileContent;
+			}
+		} else {
+			Application->MessageBox(L"Отсутствует файл servers.json!", Application->Title.w_str(), MB_OK | MB_ICONERROR);
+			return;
+		}
+
+		// запуск таймера
 		Timer->Enabled = true;
-		started = true;
+		MonitoringStarted = true;
+		TimerTimer(Timer);
 		StartButton->Caption = "Остановить мониторинг";
-		logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
-		fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Мониторинг запущен.\n").c_str());
-		fclose(logFile);
+		LogEntry("Мониторинг запущен.");
 	} else {
-		//Разблокировка элементов формы
-		IPEdit->Enabled = true;
-		PortEdit->Enabled = true;
-		FileEdit->Enabled = true;
-		FileButton->Enabled = true;
-		CmdMemo->Enabled = true;
-		IntEdit->Enabled = true;
+		// разблокировка элементов формы
+		DownEdit->Enabled = true;
 		RestartCheck->Enabled = true;
 		if (RestartCheck->Checked) {
 			HourEdit->Enabled = true;
@@ -137,99 +229,196 @@ void __fastcall TMainForm::StartButtonClick(TObject *Sender)
 		}
 		AutostartCheck->Enabled = true;
 		HideCheck->Enabled = true;
-		StartButton->Enabled = true;
+		AddButton->Enabled = true;
+		AutorunCheck->Enabled = true;
+		LogCheck->Enabled = true;
 
-		//Остановка таймера
+		// остановка таймера
 		Timer->Enabled = false;
-		started = false;
+		MonitoringStarted = false;
 		StartButton->Caption = "Начать мониторинг";
-		logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName)+"log.txt").c_str(), "a+");
-		fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Мониторинг остановлен.\n").c_str());
-		fclose(logFile);
+		LogEntry("Мониторинг остановлен.");
+
+		MainForm->ProcessIndicator->Animate = false;
+		for (int i = 0; i < Servers->Items->Count; i++) {
+			TListItem *item = Servers->Items->Item[i];
+			item->Caption = "";
+			if (item->SubItems->Count > 2) {
+				item->SubItems->Strings[2] = "";
+				item->SubItems->Strings[3] = "";
+			}
+		}
 	}
+}
+//---------------------------------------------------------------------------
+
+bool IsProcessRunning(const wchar_t *processName)
+{
+	bool exists = false;
+	HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+
+	if (hSnapshot != INVALID_HANDLE_VALUE) {
+		PROCESSENTRY32 pe;
+		pe.dwSize = sizeof(PROCESSENTRY32);
+
+		if (Process32First(hSnapshot, &pe)) {
+			do {
+				if (wcscmp(pe.szExeFile, processName) == 0) {
+					exists = true;
+					break;
+				}
+			} while (Process32Next(hSnapshot, &pe));
+		}
+
+		CloseHandle(hSnapshot);
+	}
+
+	return exists;
+}
+//---------------------------------------------------------------------------
+
+__fastcall TMonitoringThread::TMonitoringThread(bool CreateSuspended): TThread(CreateSuspended)
+{
+	FreeOnTerminate = true;
+}
+
+void __fastcall TMonitoringThread::Execute()
+{
+	MonitoringPaused = true;
+	TThread::Queue(nullptr, [this]() {
+		MainForm->ProcessIndicator->Animate = true;
+	});
+	String hour = FormatDateTime("hh", Time());
+	String min = FormatDateTime("nn", Time());
+	if (MainForm->RestartCheck->Checked && hour == MainForm->HourEdit->Text && min == MainForm->MinEdit->Text) { // ежедневная перезагрузка серверов
+		for (int i = 0; i < serversArray->Count; i++) {
+			TJSONObject *server = static_cast<TJSONObject*>(serversArray->Get(i));
+			String ip = server->GetValue("ip")->Value();
+			String port = server->GetValue("port")->Value();
+			String pass = server->GetValue("password")->Value();
+			String exe = server->GetValue("exe")->Value();
+			String args = server->GetValue("args")->Value();
+			String serverAddr = ip + ":" + port;
+			String exeName = ExtractFileName(exe);
+
+			if (IsProcessRunning(exeName.w_str())) {
+				LogEntry("Перезапуск сервера " + serverAddr + " по расписанию...");
+
+			   // мягко выключаем или убиваем процесс
+				if (pass != "") {
+					String result = MainForm->ExecuteSSQR("rcon " + ip + " " + port + " \"_restart\" \""+ pass + "\"");
+					result = Trim(result);
+					if (result == "error" || Pos("error_password", result) > 0) {
+						system(AnsiString("taskkill /IM " + exeName + " /F").c_str());
+					}
+				} else system(AnsiString("taskkill /IM " + exeName + " /F").c_str());
+
+				// запускаем сервер
+				if (FileExists(exe)) {
+					ShellExecute(NULL, L"open", exe.c_str(), args.c_str(), NULL, SW_SHOWNORMAL);
+					Sleep(30000);
+					LogEntry("Сервер " + serverAddr + " запущен.");
+				} else LogEntry("Файл \"" + exe + "\" не найден!");
+			} else LogEntry("Сервер " + serverAddr + " не работает, перезапуск по расписанию не требуется.");
+		}
+	} else { // мониторинг
+		String onl = L"\u2713";
+		String off = L"\u2715";
+		String priv = L"\U0001F512";
+		int requiredSubItems = MainForm->Servers->Columns->Count - 1;
+		for (int i = 0; i < serversArray->Count; i++) {
+			TJSONObject *server = static_cast<TJSONObject*>(serversArray->Get(i));
+			String ip = server->GetValue("ip")->Value();
+			String port = server->GetValue("port")->Value();
+			String pass = server->GetValue("password")->Value();
+			String exe = server->GetValue("exe")->Value();
+			String args = server->GetValue("args")->Value();
+			String serverAddr = ip + ":" + port;
+			int DownCount = 0;
+			TJSONValue *downCountValue = server->GetValue("down_count");
+			if (downCountValue == nullptr) server->AddPair("down_count", 0);
+			else DownCount = StrToInt(downCountValue->ToString());
+
+			String result = MainForm->ExecuteSSQR("query " + ip + " " + port);
+			if (Trim(result) != "error") {
+				if (DownCount > 0) {
+					DownCount = 0;
+					LogEntry("Сервер " + serverAddr + " снова доступен.");
+				}
+				TJSONObject *jsonObject = static_cast<TJSONObject*>(TJSONObject::ParseJSONValue(result));
+				if (jsonObject != nullptr) {
+					String map = jsonObject->GetValue("map")->Value();
+					String players = jsonObject->GetValue("players")->Value();
+					String max_players = jsonObject->GetValue("max_players")->Value();
+					String is_private = jsonObject->GetValue("password")->Value();
+
+					TThread::Queue(nullptr, [this, i, map, players, max_players, is_private, priv, onl, requiredSubItems]() {
+						if (i >= 0 && i < MainForm->Servers->Items->Count) {
+							TListItem *item = MainForm->Servers->Items->Item[i];
+
+							// заполняем SubItems, если не заполнены
+							while (item->SubItems->Count < requiredSubItems) {
+								item->SubItems->Add("");
+							}
+							if (is_private == "true") item->Caption = "    " + priv;
+							else item->Caption = "    " + onl;
+							item->SubItems->Strings[2] = map;
+							item->SubItems->Strings[3] = players + "/" + max_players;
+						}
+					});
+				}
+			} else {
+				DownCount++;
+				TThread::Queue(nullptr, [this, i, off, requiredSubItems, ip, port, exe, args]() {
+					if (i >= 0 && i < MainForm->Servers->Items->Count) {
+						TListItem *item = MainForm->Servers->Items->Item[i];
+
+						// заполняем SubItems, если не заполнены
+						while (item->SubItems->Count < requiredSubItems) {
+							item->SubItems->Add("");
+						}
+
+						item->Caption = "    " + off;
+						item->SubItems->Strings[2] = "";
+						item->SubItems->Strings[3] = "";
+					}
+				});
+
+				LogEntry("Сервер " + serverAddr + " недоступен. Потытка " + DownCount + "/" + MainForm->DownEdit->Text + ".");
+
+				if (DownCount == StrToInt(MainForm->DownEdit->Text)) {
+					// убиваем процесс
+					system(AnsiString("taskkill /IM " + ExtractFileName(exe) + " /F").c_str());
+					LogEntry("Сервер " + serverAddr + " перезапускается...");
+
+					// запускаем сервер
+					if (FileExists(exe)) {
+						ShellExecute(NULL, L"open", exe.c_str(), args.c_str(), NULL, SW_SHOWNORMAL);
+						Sleep(30000);
+						LogEntry("Сервер " + serverAddr + " запущен.");
+					} else LogEntry("Файл \"" + exe + "\" не найден!");
+
+					DownCount = 0;
+				}
+			}
+
+			// обновление DownCount в массиве
+			server->RemovePair("down_count");
+			server->AddPair("down_count", DownCount);
+		}
+	}
+	TThread::Queue(nullptr, [this]() {
+		MainForm->ProcessIndicator->Animate = false;
+	});
+	MonitoringPaused = false;
 }
 //---------------------------------------------------------------------------
 
 void __fastcall TMainForm::TimerTimer(TObject *Sender)
 {
-	char *cmd;
-	Timer->Enabled = false;
-
-	//Ежедневная перезагрузка сервера
-	if (RestartCheck->Checked) {
-		CurDate = FormatDateTime("dd.mm.yyyy", Now());
-		if (CurDate != LastRestart) {
-			String hr = FormatDateTime("hh", Time());
-			String mn = FormatDateTime("nn", Time());
-			if (hr == HourEdit->Text && mn == MinEdit->Text) {
-				//Убиваем процесс
-				system(AnsiString("taskkill /IM " + ExtractFileName(FileEdit->Text) + " /F").c_str());
-				logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
-				fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Перезапуск сервера по расписанию...\n").c_str());
-				fclose(logFile);
-
-				//Запускаем сервер
-				SetCurrentDir(ExtractFileDir(FileEdit->Text));
-				cmd = AnsiString(ExtractFileName(FileEdit->Text) + " " + CmdMemo->Text).c_str();
-				WinExec(cmd, SW_SHOW);
-				LastRestart = FormatDateTime("dd.mm.yyyy", Now());
-				logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
-				fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер запущен.\n").c_str());
-				fclose(logFile);
-				Timer->Enabled = true;
-				return;
-			}
-		}
+	if (serversArray != nullptr && !MonitoringPaused) {
+		(new TMonitoringThread(true))->Start();
 	}
-
-	//Мониторинг доступности IP:Port
-	try {
-		IdTCPClient->Connect();
-		if (IdTCPClient->Connected()) { //если порт доступен
-			IdTCPClient->Disconnect();
-			DownCount = 0;
-		}
-	} catch(...) { //если порт недоступен
-		DownCount++;
-		if (DownCount == 3) {
-			logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
-			fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Порт " + PortEdit->Text + " недоступен.\n").c_str());
-			fclose(logFile);
-
-			//Убиваем процесс
-			system(AnsiString("taskkill /IM " + ExtractFileName(FileEdit->Text) + " /F").c_str());
-			logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
-			fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер перезапускается...\n").c_str());
-			fclose(logFile);
-
-			//Запускаем сервер
-			SetCurrentDir(ExtractFileDir(FileEdit->Text));
-			cmd = AnsiString(ExtractFileName(FileEdit->Text) + " " + CmdMemo->Text).c_str();
-			WinExec(cmd, SW_SHOW);
-			logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
-			fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Сервер запущен.\n").c_str());
-			fclose(logFile);
-            DownCount = 0;
-		}
-	}
-	Timer->Enabled = true;
-}
-//---------------------------------------------------------------------------
-
-
-void __fastcall TMainForm::CmdMemoClick(TObject *Sender)
-{
-    //Очистка поля командной строки при первой настройке
-	if (CmdMemo->Text.Pos("...")) CmdMemo->Text = "";
-}
-//---------------------------------------------------------------------------
-
-void __fastcall TMainForm::IPEditKeyPress(TObject *Sender, System::WideChar &Key)
-
-{
-    //Фильтр для поля IP адреса
-	if ((Key >= '0' && Key <= '9') || Key == '.' || Key == VK_BACK) {}
-	else Key = 0;
 }
 //---------------------------------------------------------------------------
 
@@ -248,10 +437,195 @@ void __fastcall TMainForm::RestartCheckClick(TObject *Sender)
 
 void __fastcall TMainForm::FormClose(TObject *Sender, TCloseAction &Action)
 {
-	if (started == true) {
-		logFile = fopen(AnsiString(ExtractFilePath(Application->ExeName) + "log.txt").c_str(), "a+");
-		fprintf(logFile, "%s", AnsiString(FormatDateTime("dd.mm.yyyy hh:nn:ss", Now()) + " | Мониторинг прерван.\n").c_str());
-		fclose(logFile);
+	if (MonitoringStarted == true) LogEntry("Мониторинг прерван.");
+
+	// сохранение позиции формы в ini
+	Settings = new TMemIniFile(ExtractFilePath(Application->ExeName) + "settings.ini", TEncoding::UTF8);
+	Settings->WriteInteger("Position", "Top", MainForm->Top);
+	Settings->WriteInteger("Position", "Left", MainForm->Left);
+	Settings->UpdateFile();
+	delete Settings;
+
+	// удаление serversArray
+	if (serversArray != nullptr) {
+		delete serversArray;
+		serversArray = nullptr;
+	}
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TMainForm::AddButtonClick(TObject *Sender)
+{
+    ServerAddForm->ShowModal();
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TMainForm::AlexellLogoClick(TObject *Sender)
+{
+	AboutForm->ShowModal();
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TMainForm::ServersMouseDown(TObject *Sender, TMouseButton Button,
+          TShiftState Shift, int X, int Y)
+{
+	if (Button == mbRight && Servers->Selected != nullptr) {
+		TPoint point = Servers->ClientToScreen(Point(X, Y));
+		PopupMenu->Popup(point.x, point.y);
+	}
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TMainForm::PMenuRestartClick(TObject *Sender)
+{
+	RestartSelectedServer(false);
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TMainForm::PMenuShutdownClick(TObject *Sender)
+{
+	RestartSelectedServer(true);
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TMainForm::PMenuRemoveClick(TObject *Sender)
+{
+	TStringList *fileContent = new TStringList;
+	try {
+		fileContent->LoadFromFile(serversFile);
+		String jsonData = fileContent->Text;
+		TJSONArray *jsonArray = static_cast<TJSONArray*>(TJSONObject::ParseJSONValue(jsonData));
+		if (jsonArray != nullptr) {
+			int selectedIndex = Servers->Selected->Index;
+			if (selectedIndex >= 0 && selectedIndex < jsonArray->Count) jsonArray->Remove(selectedIndex);
+			if (jsonArray->Count > 0) {
+				fileContent->Text = jsonArray->ToString();
+				fileContent->SaveToFile(serversFile);
+			} else DeleteFile(serversFile);
+		}
+		delete jsonArray;
+	}
+	__finally {
+		delete fileContent;
+	}
+	LoadServers();
+}
+//---------------------------------------------------------------------------
+
+String __fastcall TMainForm::ExecuteSSQR(const String &command)
+{
+    SECURITY_ATTRIBUTES sa;
+    HANDLE hRead, hWrite;
+    sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+    sa.bInheritHandle = TRUE;
+    sa.lpSecurityDescriptor = NULL;
+
+	// создаем анонимный канал
+    if (!CreatePipe(&hRead, &hWrite, &sa, 0)) {
+		return false;
+	}
+	STARTUPINFO si;
+	PROCESS_INFORMATION pi;
+	ZeroMemory(&si, sizeof(STARTUPINFO));
+	si.cb = sizeof(STARTUPINFO);
+	si.dwFlags |= STARTF_USESHOWWINDOW; // указываем, что используем wShowWindow
+	si.wShowWindow = SW_HIDE; // скрываем окно
+	si.hStdError = hWrite;
+	si.hStdOutput = hWrite;
+	si.dwFlags |= STARTF_USESTDHANDLES;
+
+	// запускаем процесс
+	String exe = "ssqr.exe ";
+	if (!CreateProcess(NULL, (exe + command).c_str(), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
+		CloseHandle(hRead);
+		CloseHandle(hWrite);
+		return false;
+	}
+	CloseHandle(hWrite);
+
+	// читаем вывод
+	DWORD dwRead;
+	CHAR chBuf[4096];
+	String result;
+	while (true) {
+		if (!ReadFile(hRead, chBuf, sizeof(chBuf), &dwRead, NULL) || dwRead == 0) break;
+		result += String(chBuf, dwRead);
+	}
+    CloseHandle(hRead);
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+    return result;
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TMainForm::RestartSelectedServer(bool shutdown) {
+	TStringList *fileContent = new TStringList;
+	try {
+		fileContent->LoadFromFile(serversFile);
+		String jsonData = fileContent->Text;
+
+		TJSONArray *jsonArray = static_cast<TJSONArray*>(TJSONObject::ParseJSONValue(jsonData));
+		if (jsonArray != nullptr) {
+			int selectedIndex = Servers->Selected->Index;
+			if (selectedIndex >= 0 && selectedIndex < jsonArray->Count) {
+				TJSONObject *server = static_cast<TJSONObject*>(jsonArray->Get(selectedIndex));
+				String ip = server->GetValue("ip")->Value();
+				String port = server->GetValue("port")->Value();
+				String pass = server->GetValue("password")->Value();
+				String exe = server->GetValue("exe")->Value();
+				String args = server->GetValue("args")->Value();
+				String serverAddr = ip + ":" + port;
+
+				if (pass == "") {
+					Application->MessageBox(L"Не указан RCON пароль сервера!", Application->Title.w_str(), MB_OK | MB_ICONEXCLAMATION);
+					return;
+				}
+				String result = ExecuteSSQR("rcon " + ip + " " + port + " \"_restart\" \""+ pass + "\"");
+				result = Trim(result);
+				if (result == "error") {
+					Application->MessageBox(L"Не удалось выполнить RCON команду!", Application->Title.w_str(), MB_OK | MB_ICONERROR);
+					return;
+				}
+				if (Pos("error_password", result) > 0) {
+					Application->MessageBox(L"Неверный RCON пароль или RCON выключен на сервере!", Application->Title.w_str(), MB_OK | MB_ICONERROR);
+					return;
+				}
+				if (!shutdown) {
+					Sleep(3000);
+					String exeName = ExtractFileName(exe);
+					if (!IsProcessRunning(exeName.w_str())) {
+						if (FileExists(exe)) {
+							ShellExecute(NULL, L"open", exe.c_str(), args.c_str(), NULL, SW_SHOWNORMAL);
+							LogEntry("Сервер " + serverAddr + " перезапущен пользователем.");
+						} else Application->MessageBox(("Файл \"" + exe + "\" не найден!").w_str(), Application->Title.w_str(), MB_OK | MB_ICONERROR);
+					}
+				} else LogEntry("Сервер " + serverAddr + " выключен пользователем.");
+			}
+		}
+		delete jsonArray;
+	}
+	__finally {
+		delete fileContent;
+	}
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TMainForm::PMenuEditClick(TObject *Sender)
+{
+	ServerAddForm->EditServer = true;
+	ServerAddForm->EditServerID = Servers->Selected->Index;
+	ServerAddForm->ShowModal();
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TMainForm::PopupMenuPopup(TObject *Sender)
+{
+	if (MonitoringStarted) {
+		PMenuEdit->Enabled = false;
+		PMenuRemove->Enabled = false;
+	} else {
+		PMenuEdit->Enabled = true;
+		PMenuRemove->Enabled = true;
 	}
 }
 //---------------------------------------------------------------------------
